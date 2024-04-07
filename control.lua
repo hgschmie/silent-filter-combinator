@@ -158,11 +158,11 @@ local function onEntityCreated(event)
         local inv = create_internal_entity(main, 'sil-filter-combinator-ac')
         -- Check if this was a blueprint which we added custom data to
         if event.tags then
-            if event.tags.config ~= nil and event.tags.params ~= nil then
+            if event.tags.cc_config ~= nil and event.tags.cc_params ~= nil then
                 local behavior = cc.get_or_create_control_behavior()
-                conf = event.tags.config
+                conf = event.tags.cc_config
                 behavior.enabled = conf.enabled
-                behavior.parameters = event.tags.params
+                behavior.parameters = event.tags.cc_params
                 ex.get_or_create_control_behavior().enabled = conf.enabled
             end
         end
