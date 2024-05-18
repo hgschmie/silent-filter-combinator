@@ -39,7 +39,7 @@ local name_prefix_len = #name_prefix
 --- @param comb LuaEntity
 local function set_all_signals(comb)
     ---@type LuaConstantCombinatorControlBehavior
-    behavior = comb.get_or_create_control_behavior()
+    local behavior = comb.get_or_create_control_behavior()
     local max = behavior.signals_count
     local idx = 1
     local had_error = false
