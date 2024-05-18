@@ -21,8 +21,8 @@ local name_prefix_len = #name_prefix
 
 --- @param comb LuaEntity
 local function set_all_signals(comb)
-    ---@type LuaConstantCombinatorControlBehavior
-    local behavior = comb.get_or_create_control_behavior()
+
+    local behavior = comb.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     local max = behavior.signals_count
     local idx = 1
     local had_error = false
@@ -143,7 +143,7 @@ local function onEntityCreated(event)
         if event.tags then
             if event.tags.cc_config ~= nil and event.tags.cc_params ~= nil then
                 local behavior = cc.get_or_create_control_behavior()
-                conf = event.tags.cc_config
+                conf = event.tags.cc_config --[[@as FilterCombinatorConfig]]
                 behavior.enabled = conf.enabled
                 behavior.parameters = event.tags.cc_params
                 ex.get_or_create_control_behavior().enabled = conf.enabled
@@ -464,8 +464,8 @@ local function on_signal_selected(event)
         return
     end
     local signal = event.element.elem_value;
-    local slot = event.element.tags.idx
-    local behavior = data.cc.get_or_create_control_behavior()
+    local slot = event.element.tags.idx --[[@as integer]]
+    local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     behavior.set_signal(slot, signal and {signal = signal, count = 1} or nil)
 end
 
@@ -484,8 +484,8 @@ flib_gui.handle_events()
 
 --- @param cc LuaEntity
 local function make_grid_buttons(cc)
-    --- @type LuaConstantCombinatorControlBehavior
-    local behavior = cc.get_or_create_control_behavior()
+
+    local behavior = cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     local list = {}
     local empty_slot_count = 0
     -- For some reason it always is a table as big as the max signals supported... kinda unexpected but it works out I guess
@@ -759,7 +759,7 @@ local function save_to_blueprint(data, bp)
         return
     end
     local entities = bp.get_blueprint_entities()
-    if #entities < 1 then
+    if not entities or #entities < 1 then
         return
     end
     for _, unit in pairs(data) do
@@ -767,8 +767,8 @@ local function save_to_blueprint(data, bp)
         --- @type LuaEntity
         local src = global.sil_fc_data[idx].cc
         local main = global.sil_fc_data[idx].main
-        --- @type LuaConstantCombinatorControlBehavior
-        local behavior = src.get_or_create_control_behavior()
+
+        local behavior = src.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
         for __, e in ipairs(entities) do
             -- Because LUA is a fucking useless piece of shit we cannot compare values that are tables... because you know why the fuck would you want to....
             -- if e.position == main.position then
@@ -838,8 +838,8 @@ local function ccs_get_info(entity)
     if not data then
         return
     end
-    ---@type LuaConstantCombinatorControlBehavior
-    local behavior = data.cc.get_or_create_control_behavior()
+
+    local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     return {
         cc_config = data.config,
         cc_params = behavior.parameters
@@ -856,8 +856,8 @@ local function ccs_create_packed_entity(info, surface, position, force)
         local idx = global.sil_filter_combinators[ent.unit_number]
         local data = global.sil_fc_data[idx]
         data.config = info.cc_config
-        ---@type LuaConstantCombinatorControlBehavior
-        local behavior = data.cc.get_or_create_control_behavior()
+
+        local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
         behavior.parameters = info.cc_params
         behavior.enabled = data.config.enabled
         data.ex.get_or_create_control_behavior().enabled = data.config.enabled
@@ -875,8 +875,8 @@ local function ccs_create_entity(info, surface, force)
         local idx = global.sil_filter_combinators[ent.unit_number]
         local data = global.sil_fc_data[idx]
         data.config = info.cc_config
-        ---@type LuaConstantCombinatorControlBehavior
-        local behavior = data.cc.get_or_create_control_behavior()
+
+        local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
         behavior.parameters = info.cc_params
         behavior.enabled = data.config.enabled
         data.ex.get_or_create_control_behavior().enabled = data.config.enabled
