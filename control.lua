@@ -4,23 +4,6 @@
 
 local flib_gui = require("__flib__/gui-lite")
 
-local config = {}
-local configPrefix = 'sfc-'
-local prefixLength = #configPrefix
-
-for k, v in pairs(settings.global) do
-    if string.sub(k, 1, prefixLength) == configPrefix then
-        config[string.sub(k, prefixLength + 1)] = v.value
-    end
-end
-
-local function onRTSettingChanged(event)
-    if string.sub(event.setting, 1, prefixLength) ~= configPrefix then
-        return
-    end
-    config[string.sub(event.setting, prefixLength + 1)] = settings.global[event.setting].value
-end
-
 local function create_internal_entity(main, proto)
     local ent = main.surface.create_entity{
         name = proto,
@@ -952,8 +935,6 @@ local function on_configuration_changed(changed)
         end
     end
 end
-
-script.on_event(defines.events.on_runtime_mod_setting_changed, onRTSettingChanged)
 
 script.on_event(defines.events.on_gui_opened, onGuiOpen)
 script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, onEntityDeleted)
