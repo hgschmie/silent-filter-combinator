@@ -12,12 +12,16 @@ local function is_valid(entity)
     return entity and entity.valid
 end
 
-local function register_combinator(entity, id)
-    assert(entity and entity.valid)
-    fc_table[entity.unit_number] = id
-end
-
 for _, data in pairs(global.sil_fc_data) do
+    local ids = {}
+
+    local register_combinator = function(entity, id)
+        assert(entity and entity.valid)
+        fc_table[entity.unit_number] = id
+        ids[entity.unit_number] = entity
+        end
+
+
     --- @type FilterCombinatorData
     if data and is_valid(data.main) then
         local id = data.main.unit_number
@@ -31,6 +35,7 @@ for _, data in pairs(global.sil_fc_data) do
         end
 
         data_table[id] = data
+        data_table[id].ids = ids
         count = count + 1
     end
 end

@@ -4,26 +4,14 @@
 
 local flib_gui = require("__flib__/gui-lite")
 
-local function create_internal_entity(main, proto)
-    local ent = main.surface.create_entity{
-        name = proto,
-        position = main.position,
-        force = main.force,
-        create_build_effect_smoke = false,
-        spawn_decorations = false,
-        move_stuck_players = true,
-    }
-    global.sil_filter_combinators[ent.unit_number] = main.unit_number
-    return ent
-end
 
 local name_prefix = 'sil-filter-combinator'
 local name_prefix_len = #name_prefix
 
 --- @param comb LuaEntity
 local function set_all_signals(comb)
-
-    local behavior = comb.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
+    ---@type LuaConstantCombinatorControlBehavior
+    local behavior = comb.get_or_create_control_behavior()
     local max = behavior.signals_count
     local idx = 1
     local had_error = false
@@ -57,6 +45,18 @@ local function set_all_signals(comb)
         log('!!! ERROR !!! Some mod(s) added ' .. max - idx + 1 .. ' additional items, fluids and / or signals AFTER the initial data stage, which is NOT supposed to be done by any mod! Exclusive mode might not work correctly. Please report this error and include a complete list of mods used.')
         global.sil_fc_slot_error_logged = true
     end
+end
+
+--- @return FilterCombinatorConfig
+local function get_default_config()
+    --- @type FilterCombinatorConfig
+    local conf = {
+        enabled = true,
+        filter_input_from_wire = false,
+        filter_input_wire = defines.wire_type.green,
+        exclusive = false
+    }
+    return conf
 end
 
 --- @param data FilterCombinatorData
@@ -120,14 +120,28 @@ local function create_entity(main, tags)
 
     local signal_each = { type = 'virtual', name = 'signal-each' }
 
-    --- @type FilterCombinatorConfig
-    local conf = {
-        enabled = true,
-        filter_input_from_wire = false,
-        filter_input_wire = defines.wire_type.green,
-        exclusive = false
-    }
     global.sil_filter_combinators[main.unit_number] = main.unit_number
+
+    local ids = {}
+    ids[main.unit_number] = main
+
+    local create_internal_entity = function(main, proto)
+        local ent = main.surface.create_entity {
+            name = proto,
+            position = main.position,
+            force = main.force,
+            create_build_effect_smoke = false,
+            spawn_decorations = false,
+            move_stuck_players = true,
+        }
+        global.sil_filter_combinators[ent.unit_number] = main.unit_number
+        ids[ent.unit_number] = ent
+
+        return ent
+    end
+
+    --- @type FilterCombinatorConfig
+    local conf = get_default_config()
 
     -- Logic Circuitry Entities
     local cc = create_internal_entity(main, 'sil-filter-combinator-cc')
@@ -143,16 +157,36 @@ local function create_entity(main, tags)
     local out = create_internal_entity(main, 'sil-filter-combinator-ac')
     local ex = create_internal_entity(main, 'sil-filter-combinator-cc')
     local inv = create_internal_entity(main, 'sil-filter-combinator-ac')
+
+    local data = {
+        ids = ids,
+        config = conf,
+        main = main,
+        cc = cc,
+        calc = { d1, d2, d3, d4, a1, a2, a3, a4, ccf, out, inv },
+        ex = ex,
+        inv = inv,
+        input_pos = a3,
+        input_neg = a1,
+        filter = ccf,
+        inp = d1,
+    }
+
     -- Check if this was a blueprint which we added custom data to
     if tags then
-        if tags.cc_config ~= nil and tags.cc_params ~= nil then
-            local behavior = cc.get_or_create_control_behavior()
+        local behavior = cc.get_or_create_control_behavior()
+        if tags.config ~= nil and tags.params ~= nil then
+            conf = tags.config --[[@as FilterCombinatorConfig]]
+            behavior.parameters = tags.params
+        elseif tags.cc_config ~= nil and tags.cc_params ~= nil then
+            -- compakt combinator code uses cc_ for some reason...
             conf = tags.cc_config --[[@as FilterCombinatorConfig]]
-            behavior.enabled = conf.enabled
             behavior.parameters = tags.cc_params
-            ex.get_or_create_control_behavior().enabled = conf.enabled
         end
+        behavior.enabled = conf.enabled
+        ex.get_or_create_control_behavior().enabled = conf.enabled
     end
+
     -- Set up Exclusive mode Combinator signals
     set_all_signals(ex)
     -- Set Conditions
@@ -196,7 +230,8 @@ local function create_entity(main, tags)
     main.connect_neighbour({wire = defines.wire_type.red, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
     main.connect_neighbour({wire = defines.wire_type.green, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
     -- Store Entities
-    global.sil_fc_data[main.unit_number] = {main = main, cc = cc, calc = {d1, d2, d3, d4, a1, a2, a3, a4, ccf, out, inv}, ex = ex, inv = inv, input_pos = a3, input_neg = a1, filter = ccf, inp = d1, config = conf}
+    assert(not global.sil_fc_data[main.unit_number])
+    global.sil_fc_data[main.unit_number] = data
     global.sil_fc_count = global.sil_fc_count + 1
 
     -- check for default config
@@ -205,13 +240,6 @@ local function create_entity(main, tags)
     end
 end
 
-
-local function destroy_entity(entity)
-    if entity.valid then
-        global.sil_filter_combinators[entity.unit_number] = nil
-    end
-    entity.destroy()
-end
 
 ---Returns the filter combinator configuration or nil
 ---@param entity LuaEntity
@@ -224,34 +252,34 @@ local function locate_config(entity)
     return global.sil_fc_data[match], match
 end
 
+local function remove_data(unit_number)
+    -- null out the configuration
+    if global.sil_fc_data[unit_number] then
+        global.sil_fc_data[unit_number] = nil
+        global.sil_fc_count = global.sil_fc_count - 1
+
+        if global.sil_fc_count < 0 then
+            global.sil_fc_count = table_size(global.sil_fc_data)
+            log("Filter Combinator count got negative (bug), size is now: " .. global.sil_fc_count)
+        end
+    end
+end
+
 --- @param entity LuaEntity
 local function delete_entity(entity)
-    if not string.sub(entity.name, 1, name_prefix_len) == name_prefix then return end
+    if string.sub(entity.name, 1, name_prefix_len) ~= name_prefix then return end
 
     local data, match = locate_config(entity)
     if not data then return end
 
     assert(data.main.valid and entity.valid and data.main.unit_number == entity.unit_number)
-    destroy_entity(data.main)
 
-    if data.cc and data.cc.valid then
-        destroy_entity(data.cc)
+    for idx, entity in pairs(data.ids) do
+        entity.destroy()
+        global.sil_filter_combinators[idx] = nil
     end
 
-    if data.ex and data.ex.valid then
-        destroy_entity(data.ex)
-    end
-
-    if data.calc then
-        for _, e in pairs(data.calc) do
-            if e and e.valid then
-                destroy_entity(e)
-            end
-        end
-    end
-    -- null out the configuration
-    global.sil_fc_data[match] = nil
-    global.sil_fc_count = global.sil_fc_count - 1
+    remove_data(match)
 end
 
 --- @param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive
@@ -309,45 +337,59 @@ local function onEntityCloned(event)
     local src = event.source
     local dst = event.destination
 
-    if string.sub(src.name, 1, name_prefix_len) == name_prefix then
-        local data = locate_config(src)
-        if data then
-            local src_unit = src.unit_number
-            if src.name == name_prefix then
-                data.main = dst
-            elseif src.name == name_prefix .. '-ac' or src.name == name_prefix .. '-dc' then
-                for i,e in pairs(data.calc) do
-                    if e and e.valid and e.unit_number == src_unit then
-                        data.calc[i] = dst
-                        break
-                    end
-                end
-                if src_unit == data.inv.unit_number then
-                    data.inv = dst
-                elseif src_unit == data.input_pos.unit_number then
-                    data.input_pos = dst
-                elseif src_unit == data.input_neg.unit_number then
-                    data.input_neg = dst
-                elseif src_unit == data.filter.unit_number then
-                    data.filter = dst
-                elseif src_unit == data.inp.unit_number then
-                    data.inp = dst
-                end
-            elseif src.name == name_prefix .. '-cc' then
-                if data.cc.unit_number == src_unit then
-                    data.cc = dst
-                elseif data.ex.unit_number == src_unit then
-                    data.ex = dst
-                else
-                    log('Failed to update ' .. src.name .. ' ' .. src_unit .. ' -> ' .. dst.unit_number)
-                end
-            else
-                log('Unmatched entity ' .. src.name)
-            end
-            global.sil_filter_combinators[dst.unit_number] = global.sil_filter_combinators[src_unit]
-            global.sil_filter_combinators[src_unit] = nil
-        end
+    if string.sub(src.name, 1, name_prefix_len) ~= name_prefix then return end
+
+    local data = locate_config(src)
+    if not data then return end
+
+    local function replace_combinator(old, new)
+        data.ids[old.unit_number] = nil
+        data.ids[new.unit_number] = new
     end
+
+    local src_unit = src.unit_number
+    if src.name == name_prefix then
+        replace_combinator(data.main, dst)
+        data.main = dst
+    elseif src.name == name_prefix .. '-ac' or src.name == name_prefix .. '-dc' then
+        for i, e in pairs(data.calc) do
+            if e and e.valid and e.unit_number == src_unit then
+                replace_combinator(data.calc[i], dst)
+                data.calc[i] = dst
+                break
+            end
+        end
+        if src_unit == data.inv.unit_number then
+            replace_combinator(data.inv, dst)
+            data.inv = dst
+        elseif src_unit == data.input_pos.unit_number then
+            replace_combinator(data.input_pos, dst)
+            data.input_pos = dst
+        elseif src_unit == data.input_neg.unit_number then
+            replace_combinator(data.input_neg, dst)
+            data.input_neg = dst
+        elseif src_unit == data.filter.unit_number then
+            replace_combinator(data.filter, dst)
+            data.filter = dst
+        elseif src_unit == data.inp.unit_number then
+            replace_combinator(data.inp, dst)
+            data.inp = dst
+        end
+    elseif src.name == name_prefix .. '-cc' then
+        if data.cc.unit_number == src_unit then
+            replace_combinator(data.cc, dst)
+            data.cc = dst
+        elseif data.ex.unit_number == src_unit then
+            replace_combinator(data.ex, dst)
+            data.ex = dst
+        else
+            log('Failed to update ' .. src.name .. ' ' .. src_unit .. ' -> ' .. dst.unit_number)
+        end
+    else
+        log('Unmatched entity ' .. src.name)
+    end
+    global.sil_filter_combinators[dst.unit_number] = global.sil_filter_combinators[src_unit]
+    global.sil_filter_combinators[src_unit] = nil
 end
 
 --#region gui
@@ -953,6 +995,44 @@ local function on_configuration_changed(changed)
     end
 end
 
+local function housekeeping(event)
+    if global.sil_fc_count <= 0 then return end
+    for idx, data in pairs(global.sil_fc_data) do
+        if not data.main.valid then
+            -- most likely cc has removed the main entity
+            local ids = data.ids
+            -- we ran the migration that created the ids field with all the
+            -- combinator ids. Use those
+            if ids then
+                for id, entity in pairs(ids) do
+                    assert(not global.sil_filter_combinators[id] or global.sil_filter_combinators[id] == idx)
+                    entity.destroy()
+                    global.sil_filter_combinators[id] = nil
+                end
+            else
+                -- remove ids the hard way. Iterate over all known combinators, find the ones
+                -- that use the main id.
+                for id, main_id in pairs(global.sil_filter_combinators) do
+                    if main_id == idx then
+                        table.insert(ids, id)
+                    end
+                end
+
+                -- now kill all the entities in the data object
+                data.main.destroy()
+                data.cc.destroy()
+                data.ex.destroy()
+                for _, e in pairs(data.calc) do
+                    e.destroy()
+                end
+            end
+            remove_data(idx)
+        end
+    end
+end
+
+script.on_nth_tick(301, housekeeping)
+
 script.on_event(defines.events.on_gui_opened, onGuiOpen)
 script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, onEntityDeleted)
 script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive}, onEntityCreated)
@@ -997,3 +1077,4 @@ script.on_configuration_changed(on_configuration_changed)
 --- @field filter LuaEntity
 --- @field inp LuaEntity
 --- @field config FilterCombinatorConfig
+--- @field ids table<integer, LuaEntity>

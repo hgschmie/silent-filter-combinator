@@ -52,27 +52,42 @@ data:extend{comb}
 
 if mods['compaktcircuit'] then
     local packed = table.deepcopy(comb)
+
+    -- PrototypeBase
     packed.name = 'sil-filter-combinator-packed'
-    packed.flags = {'placeable-off-grid', 'not-repairable', 'not-on-map', 'not-deconstructable', 'not-blueprintable', 'hidden', 'hide-alt-info', 'not-flammable', 'no-copy-paste', 'not-selectable-in-game', 'not-upgradable', 'not-in-kill-statistics', 'not-in-made-in'}
-    packed.draw_circuit_wires = false
-    packed.collision_box = nil
-    packed.selection_box = nil
+
+    -- ArithmeticCombinatorPrototype
+    packed.plus_symbol_sprites = util.empty_sprite(1)
+    packed.minus_symbol_sprites = util.empty_sprite(1)
+    packed.multiply_symbol_sprites = util.empty_sprite(1)
+    packed.divide_symbol_sprites = util.empty_sprite(1)
+    packed.modulo_symbol_sprites = util.empty_sprite(1)
+    packed.power_symbol_sprites = util.empty_sprite(1)
+    packed.left_shift_symbol_sprites = util.empty_sprite(1)
+    packed.right_shift_symbol_sprites = util.empty_sprite(1)
+    packed.and_symbol_sprites = util.empty_sprite(1)
+    packed.or_symbol_sprites = util.empty_sprite(1)
+    packed.xor_symbol_sprites = util.empty_sprite(1)
+
+    -- CombinatorPrototype
     packed.sprites = util.empty_sprite(1)
+    packed.activity_led_sprites = util.empty_sprite(1)
+    packed.activity_led_light_offsets = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }
+    packed.draw_circuit_wires = false
+
+    -- turn off the flashing icons
+    local energy_source = table.deepcopy(comb.energy_source)
+    energy_source.render_no_network_icon = false
+    energy_source.render_no_power_icon = false
+    packed.energy_source = energy_source
+
+    -- EntityPrototype
+    packed.collision_box = nil
     packed.collision_mask = {}
+    packed.selection_box = nil
+    packed.flags = {'placeable-off-grid', 'not-repairable', 'not-on-map', 'not-deconstructable', 'not-blueprintable', 'hidden', 'hide-alt-info', 'not-flammable', 'no-copy-paste', 'not-selectable-in-game', 'not-upgradable', 'not-in-kill-statistics', 'not-in-made-in'}
     packed.minable = nil
     packed.selectable_in_game = false
-    packed.activity_led_light_offsets = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }
-    packed.and_symbol_sprites = util.empty_sprite(1)
-    packed.divide_symbol_sprites = util.empty_sprite(1)
-    packed.left_shift_symbol_sprites = util.empty_sprite(1)
-    packed.minus_symbol_sprites = util.empty_sprite(1)
-    packed.modulo_symbol_sprites = util.empty_sprite(1)
-    packed.multiply_symbol_sprites = util.empty_sprite(1)
-    packed.or_symbol_sprites = util.empty_sprite(1)
-    packed.plus_symbol_sprites = util.empty_sprite(1)
-    packed.power_symbol_sprites = util.empty_sprite(1)
-    packed.right_shift_symbol_sprites = util.empty_sprite(1)
-    packed.xor_symbol_sprites = util.empty_sprite(1)
 
     data:extend{packed}
 end
