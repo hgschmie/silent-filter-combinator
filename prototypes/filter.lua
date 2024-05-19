@@ -71,8 +71,8 @@ if mods['compaktcircuit'] then
 
     -- CombinatorPrototype
     packed.sprites = util.empty_sprite(1)
-    packed.activity_led_sprites = util.empty_sprite(1)
     packed.activity_led_light_offsets = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }
+    packed.activity_led_sprites = util.empty_sprite(1)
     packed.draw_circuit_wires = false
 
     -- turn off the flashing icons
