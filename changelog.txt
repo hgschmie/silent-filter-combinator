@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2024-05-19
+
+  Features:
+    - Forked off the mainline (somewhere between 1.0.4 and 1.0.6). Placeholder for filter-combinator-improved
+    - Do not distribute, do not change
+---------------------------------------------------------------------------------------------------
 Version: 1.0.4
 Date: 2024-01-28
 
