@@ -1,11 +1,11 @@
 {
-  "name": "silent-filter-combinator",
-  "title": "Filter Combinator",
-  "version": "1.1.0",
-  "author": "Sil3ntSt0rm",
-  "contact": "",
-  "homepage": "https://github.com/Sil3ntStorm/factorio-filter-combinator",
+  "name": "filter-combinator-improved",
+  "version": "2.0.0",
+  "title": "Filter Combinator (Improved)",
+  "author": "hgschmie",
+  "contact": "https://github.com/hgschmie/factorio-mod-filter-combinator-improved/issues",
+  "homepage": "https://github.com/hgschmie/factorio-mod-filter-combinator-improved/",
   "factorio_version": "1.1",
-  "dependencies": [ "base >= 1.1", "flib >= 0.13.0", "?PickerDollies", "?nullius", "?compaktcircuit", "?space-exploration" ],
+  "dependencies": [ "base >= 1.1", "flib >= 0.14.0", "?PickerDollies", "?nullius", "?compaktcircuit", "?space-exploration" ],
   "description": "Provides a filter combinator, which lets you filter any number of signals from the input. Does not alter the signal level and is valid for every signal level. Implemented in terms of circuitry rather than on_tick for performance. 3 ticks of delay between input and output. Compatible with Space Exploration."
 }

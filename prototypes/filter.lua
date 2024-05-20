@@ -2,15 +2,17 @@
 --
 -- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
 
+local const = require('lib.constants')
+
 local comb = table.deepcopy(data.raw['arithmetic-combinator']['arithmetic-combinator'])
 local sprite = {
-    filename = '__silent-filter-combinator__/graphics/filter-combinator-display.png',
+    filename = const:png('filter-combinator-display'), -- '__silent-filter-combinator__/graphics/filter-combinator-display.png',
     width = 15,
     height = 11,
     scale = comb.and_symbol_sprites.north.scale,
     shift = comb.and_symbol_sprites.north.shift,
     hr_version = {
-        filename = '__silent-filter-combinator__/graphics/hr-filter-combinator-display.png',
+        filename = const:png('hr-filter-combinator-display'), -- '__silent-filter-combinator__/graphics/hr-filter-combinator-display.png',
         width = 30,
         height = 22,
         scale = comb.and_symbol_sprites.north.hr_version.scale,
@@ -18,22 +20,23 @@ local sprite = {
     }
 }
 local sprite_v = {
-    filename = '__silent-filter-combinator__/graphics/filter-combinator-display.png',
+    filename = const:png('filter-combinator-display'), -- '__silent-filter-combinator__/graphics/filter-combinator-display.png',
     width = 15,
     height = 11,
     scale = comb.and_symbol_sprites.east.scale,
     shift = comb.and_symbol_sprites.east.shift,
     hr_version = {
-        filename = '__silent-filter-combinator__/graphics/hr-filter-combinator-display.png',
+        filename = const:png('hr-filter-combinator-display'), -- '__silent-filter-combinator__/graphics/hr-filter-combinator-display.png',
         width = 30,
         height = 22,
         scale = comb.and_symbol_sprites.east.hr_version.scale,
         shift = comb.and_symbol_sprites.east.hr_version.shift
     }
 }
+
 local full_sprite = { east = sprite_v, west = sprite_v, north = sprite, south = sprite }
 
-comb.name = 'sil-filter-combinator'
+comb.name = const.filter_combinator_name
 comb.minable.result = comb.name
 comb.circuit_wire_max_distance = 20
 comb.and_symbol_sprites = full_sprite
@@ -54,7 +57,7 @@ if mods['compaktcircuit'] then
     local packed = table.deepcopy(comb)
 
     -- PrototypeBase
-    packed.name = 'sil-filter-combinator-packed'
+    packed.name = const.filter_combinator_name_packed
 
     -- ArithmeticCombinatorPrototype
     packed.plus_symbol_sprites = util.empty_sprite(1)

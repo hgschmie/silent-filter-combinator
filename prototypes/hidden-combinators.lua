@@ -2,6 +2,8 @@
 --
 -- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
 
+local const = require('lib.constants')
+
 local empty_sprite_4way = { north = util.empty_sprite(1), south = util.empty_sprite(1), east = util.empty_sprite(1), west = util.empty_sprite(1)}
 
 local function create_combinator(source, name)
@@ -23,7 +25,7 @@ local function create_combinator(source, name)
     return c
 end
 
-local dc = create_combinator(data.raw['decider-combinator']['decider-combinator'], 'sil-filter-combinator-dc')
+local dc = create_combinator(data.raw['decider-combinator']['decider-combinator'], const.internal_dc_name)
 dc.greater_symbol_sprites = empty_sprite_4way
 dc.greater_or_equal_symbol_sprites = empty_sprite_4way
 dc.less_symbol_sprites = empty_sprite_4way
@@ -33,7 +35,7 @@ dc.less_or_equal_symbol_sprites = empty_sprite_4way
 
 data:extend{dc}
 
-local ac = create_combinator(data.raw['arithmetic-combinator']['arithmetic-combinator'], 'sil-filter-combinator-ac')
+local ac = create_combinator(data.raw['arithmetic-combinator']['arithmetic-combinator'], const.internal_ac_name)
 ac.plus_symbol_sprites = empty_sprite_4way
 ac.minus_symbol_sprites = empty_sprite_4way
 ac.multiply_symbol_sprites = empty_sprite_4way

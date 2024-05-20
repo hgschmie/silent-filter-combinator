@@ -1,6 +1,8 @@
+local const = require('lib.constants')
+
 data:extend({
     {
-        name = 'sfc-empty-slots',
+        name = const:with_prefix('empty-slots'),
         type = 'int-setting',
         setting_type = 'startup',
         order = 'a',

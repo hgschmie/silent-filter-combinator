@@ -2,22 +2,21 @@
 --
 -- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
 
+local const = require('lib.constants')
+
 local flib_gui = require("__flib__/gui-lite")
 
-
-local name_prefix = 'sil-filter-combinator'
-local name_prefix_len = #name_prefix
+local name_prefix_len = #const.filter_combinator_name
 
 --- @param comb LuaEntity
 local function set_all_signals(comb)
-    ---@type LuaConstantCombinatorControlBehavior
-    local behavior = comb.get_or_create_control_behavior()
+    local behavior = comb.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     local max = behavior.signals_count
     local idx = 1
     local had_error = false
     for sig_name, _ in pairs(game.item_prototypes) do
         if idx <= max then
-            behavior.set_signal(idx, { signal = {type = 'item', name = sig_name}, count = 1})
+            behavior.set_signal(idx, { signal = { type = 'item', name = sig_name }, count = 1 })
         elseif not had_error then
             had_error = true
         end
@@ -25,7 +24,7 @@ local function set_all_signals(comb)
     end
     for sig_name, _ in pairs(game.fluid_prototypes) do
         if idx <= max then
-            behavior.set_signal(idx, { signal = {type = 'fluid', name = sig_name}, count = 1})
+            behavior.set_signal(idx, { signal = { type = 'fluid', name = sig_name }, count = 1 })
         elseif not had_error then
             had_error = true
         end
@@ -34,7 +33,7 @@ local function set_all_signals(comb)
     for sig_name, proto in pairs(game.virtual_signal_prototypes) do
         if not proto.special then
             if idx <= max then
-                behavior.set_signal(idx, { signal = {type = 'virtual', name = sig_name}, count = 1})
+                behavior.set_signal(idx, { signal = { type = 'virtual', name = sig_name }, count = 1 })
             elseif not had_error then
                 had_error = true
             end
@@ -42,7 +41,9 @@ local function set_all_signals(comb)
         end
     end
     if had_error and not global.sil_fc_slot_error_logged then
-        log('!!! ERROR !!! Some mod(s) added ' .. max - idx + 1 .. ' additional items, fluids and / or signals AFTER the initial data stage, which is NOT supposed to be done by any mod! Exclusive mode might not work correctly. Please report this error and include a complete list of mods used.')
+        log('!!! ERROR !!! Some mod(s) added ' ..
+        max - idx + 1 ..
+        ' additional items, fluids and / or signals AFTER the initial data stage, which is NOT supposed to be done by any mod! Exclusive mode might not work correctly. Please report this error and include a complete list of mods used.')
         global.sil_fc_slot_error_logged = true
     end
 end
@@ -54,7 +55,7 @@ local function get_default_config()
         enabled = true,
         filter_input_from_wire = false,
         filter_input_wire = defines.wire_type.green,
-        exclusive = false
+        exclusive = false,
     }
     return conf
 end
@@ -69,10 +70,14 @@ local function update_entity(data)
     end
 
     -- Disconnect main, which was potentially rewired for wire input based filtering
-    data.main.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    data.main.disconnect_neighbour({wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    data.main.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    data.main.disconnect_neighbour({wire = defines.wire_type.green, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    data.main.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    data.main.disconnect_neighbour({ wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    data.main.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input })
+    data.main.disconnect_neighbour({ wire = defines.wire_type.green, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input })
     if not data.config.enabled then
         -- If disabled nothing else to do after disconnecting main entity
         return
@@ -80,43 +85,63 @@ local function update_entity(data)
     -- Disconnect configured input, which gets rewired for exclusive mode and wire input filtering
     data.cc.disconnect_neighbour(defines.wire_type.red)
     -- Disconnect inverter, which gets rewired for exclusive mode
-    data.inv.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-    data.inv.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
+    data.inv.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+    data.inv.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
     -- Disconnect filter, which gets rewired for wire input based filtering
-    data.filter.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-    data.filter.disconnect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
+    data.filter.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+    data.filter.disconnect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+    .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
     if data.config.exclusive and not data.config.filter_input_from_wire then
         -- All but the configured signals
-        data.inv.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-        data.inv.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-        data.main.connect_neighbour({wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.main.connect_neighbour({wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.cc.connect_neighbour({wire = defines.wire_type.red, target_entity = data.inv, target_circuit_id = defines.circuit_connector_id.combinator_input})
+        data.inv.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+        data.inv.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+        data.main.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.main.connect_neighbour({ wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input })
+        data.cc.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.inv, target_circuit_id = defines.circuit_connector_id.combinator_input })
     elseif not data.config.filter_input_from_wire then
         -- Default config
-        data.cc.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.cc.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.main.connect_neighbour({wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.main.connect_neighbour({wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
+        data.cc.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+        .combinator_input })
+        data.cc.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+        .combinator_input })
+        data.main.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.main.connect_neighbour({ wire = defines.wire_type.green, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input })
     elseif data.config.exclusive then
         -- All but those present on an input wire
-        data.main.connect_neighbour({wire = non_filter_wire, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.main.connect_neighbour({wire = filter_wire, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.inv.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-        data.inv.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
+        data.main.connect_neighbour({ wire = non_filter_wire, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.main.connect_neighbour({ wire = filter_wire, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.inv.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+        data.inv.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
     else
         -- Wire input is the signals we want
-        data.main.connect_neighbour({wire = non_filter_wire, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.main.connect_neighbour({wire = filter_wire, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-        data.filter.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-        data.filter.connect_neighbour({wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
+        data.main.connect_neighbour({ wire = non_filter_wire, target_entity = data.inp, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.main.connect_neighbour({ wire = filter_wire, target_entity = data.filter, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+        defines.circuit_connector_id.combinator_input })
+        data.filter.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_pos, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
+        data.filter.connect_neighbour({ wire = defines.wire_type.red, target_entity = data.input_neg, target_circuit_id = defines.circuit_connector_id
+        .combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output })
     end
 end
 
 --- @param main LuaEntity
 --- @param tags Tags?
 local function create_entity(main, tags)
-    if not (main and main.valid and (main.name == name_prefix or main.name == name_prefix .. '-packed')) then return end
+    if not (main and main.valid and (main.name == const.filter_combinator_name or main.name == const.filter_combinator_name_packed)) then return end
 
     local signal_each = { type = 'virtual', name = 'signal-each' }
 
@@ -144,19 +169,19 @@ local function create_entity(main, tags)
     local conf = get_default_config()
 
     -- Logic Circuitry Entities
-    local cc = create_internal_entity(main, 'sil-filter-combinator-cc')
-    local d1 = create_internal_entity(main, 'sil-filter-combinator-dc')
-    local d2 = create_internal_entity(main, 'sil-filter-combinator-dc')
-    local d3 = create_internal_entity(main, 'sil-filter-combinator-dc')
-    local d4 = create_internal_entity(main, 'sil-filter-combinator-dc')
-    local a1 = create_internal_entity(main, 'sil-filter-combinator-ac')
-    local a2 = create_internal_entity(main, 'sil-filter-combinator-ac')
-    local a3 = create_internal_entity(main, 'sil-filter-combinator-ac')
-    local a4 = create_internal_entity(main, 'sil-filter-combinator-ac')
-    local ccf = create_internal_entity(main, 'sil-filter-combinator-dc')
-    local out = create_internal_entity(main, 'sil-filter-combinator-ac')
-    local ex = create_internal_entity(main, 'sil-filter-combinator-cc')
-    local inv = create_internal_entity(main, 'sil-filter-combinator-ac')
+    local cc = create_internal_entity(main, const.internal_cc_name)
+    local d1 = create_internal_entity(main, const.internal_dc_name)
+    local d2 = create_internal_entity(main, const.internal_dc_name)
+    local d3 = create_internal_entity(main, const.internal_dc_name)
+    local d4 = create_internal_entity(main, const.internal_dc_name)
+    local a1 = create_internal_entity(main, const.internal_ac_name)
+    local a2 = create_internal_entity(main, const.internal_ac_name)
+    local a3 = create_internal_entity(main, const.internal_ac_name)
+    local a4 = create_internal_entity(main, const.internal_ac_name)
+    local ccf = create_internal_entity(main, const.internal_dc_name)
+    local out = create_internal_entity(main, const.internal_ac_name)
+    local ex = create_internal_entity(main, const.internal_cc_name)
+    local inv = create_internal_entity(main, const.internal_ac_name)
 
     local data = {
         ids = ids,
@@ -192,43 +217,61 @@ local function create_entity(main, tags)
     -- Set Conditions
     ccf.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '!=', copy_count_from_input = false }
     out.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '+', second_constant = 0 }
-    d1.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, comparator = '<'}
-    d2.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, comparator = '>'}
-    a1.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = 0 - (2 ^ 31 - 1) }
-    a2.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
-    d3.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, comparator = '>'}
-    a3.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = 2 ^ 31 - 1 }
-    a4.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
-    d4.get_or_create_control_behavior().parameters  = { first_signal = signal_each, output_signal = signal_each, comparator = '<'}
+    d1.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '<' }
+    d2.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '>' }
+    a1.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = 0 -
+    (2 ^ 31 - 1) }
+    a2.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
+    d3.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '>' }
+    a3.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = 2 ^ 31 - 1 }
+    a4.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
+    d4.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '<' }
     inv.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
 
     -- Exclusive Mode
-    ex.connect_neighbour({wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_output})
-    cc.connect_neighbour({wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_input})
+    ex.connect_neighbour({ wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_output })
+    cc.connect_neighbour({ wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_input })
     -- Connect Logic
-    ccf.connect_neighbour({wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_output})
-    d1.connect_neighbour({wire = defines.wire_type.red, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    d1.connect_neighbour({wire = defines.wire_type.green, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    ccf.connect_neighbour({ wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_output })
+    d1.connect_neighbour({ wire = defines.wire_type.red, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    d1.connect_neighbour({ wire = defines.wire_type.green, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
     -- Negative Inputs
-    a1.connect_neighbour({wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    a2.connect_neighbour({wire = defines.wire_type.red, target_entity = a1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    d3.connect_neighbour({wire = defines.wire_type.red, target_entity = a2, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    d3.connect_neighbour({wire = defines.wire_type.red, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    a1.connect_neighbour({ wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input })
+    a2.connect_neighbour({ wire = defines.wire_type.red, target_entity = a1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    d3.connect_neighbour({ wire = defines.wire_type.red, target_entity = a2, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    d3.connect_neighbour({ wire = defines.wire_type.red, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
     -- Positive Inputs
-    a3.connect_neighbour({wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    a4.connect_neighbour({wire = defines.wire_type.red, target_entity = a3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    d4.connect_neighbour({wire = defines.wire_type.red, target_entity = a4, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    d4.connect_neighbour({wire = defines.wire_type.red, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    a3.connect_neighbour({ wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input })
+    a4.connect_neighbour({ wire = defines.wire_type.red, target_entity = a3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    d4.connect_neighbour({ wire = defines.wire_type.red, target_entity = a4, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    d4.connect_neighbour({ wire = defines.wire_type.red, target_entity = d2, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
     -- Wire up output (to be able to use any color wire again)
-    out.connect_neighbour({wire = defines.wire_type.green, target_entity = a1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    out.connect_neighbour({wire = defines.wire_type.green, target_entity = d3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    out.connect_neighbour({wire = defines.wire_type.green, target_entity = a3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    out.connect_neighbour({wire = defines.wire_type.green, target_entity = d4, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    out.connect_neighbour({ wire = defines.wire_type.green, target_entity = a1, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    out.connect_neighbour({ wire = defines.wire_type.green, target_entity = d3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    out.connect_neighbour({ wire = defines.wire_type.green, target_entity = a3, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    out.connect_neighbour({ wire = defines.wire_type.green, target_entity = d4, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
     -- Connect main entity
-    main.connect_neighbour({wire = defines.wire_type.red, target_entity = out, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_output})
-    main.connect_neighbour({wire = defines.wire_type.green, target_entity = out, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id = defines.circuit_connector_id.combinator_output})
-    main.connect_neighbour({wire = defines.wire_type.red, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
-    main.connect_neighbour({wire = defines.wire_type.green, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id = defines.circuit_connector_id.combinator_input})
+    main.connect_neighbour({ wire = defines.wire_type.red, target_entity = out, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_output })
+    main.connect_neighbour({ wire = defines.wire_type.green, target_entity = out, target_circuit_id = defines.circuit_connector_id.combinator_output, source_circuit_id =
+    defines.circuit_connector_id.combinator_output })
+    main.connect_neighbour({ wire = defines.wire_type.red, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
+    main.connect_neighbour({ wire = defines.wire_type.green, target_entity = d1, target_circuit_id = defines.circuit_connector_id.combinator_input, source_circuit_id =
+    defines.circuit_connector_id.combinator_input })
     -- Store Entities
     assert(not global.sil_fc_data[main.unit_number])
     global.sil_fc_data[main.unit_number] = data
@@ -267,7 +310,7 @@ end
 
 --- @param entity LuaEntity
 local function delete_entity(entity)
-    if string.sub(entity.name, 1, name_prefix_len) ~= name_prefix then return end
+    if string.sub(entity.name, 1, name_prefix_len) ~= const.filter_combinator_name then return end
 
     local data, match = locate_config(entity)
     if not data then return end
@@ -307,7 +350,7 @@ local function onEntityMoved(event)
     if (not (event.moved_entity and event.moved_entity.valid)) then
         return
     end
-    if event.moved_entity.name == name_prefix then
+    if event.moved_entity.name == const.filter_combinator_name then
         local data = locate_config(event.moved_entity)
         if data then
             if data.cc and data.cc.valid then
@@ -337,7 +380,7 @@ local function onEntityCloned(event)
     local src = event.source
     local dst = event.destination
 
-    if string.sub(src.name, 1, name_prefix_len) ~= name_prefix then return end
+    if string.sub(src.name, 1, name_prefix_len) ~= const.filter_combinator_name then return end
 
     local data = locate_config(src)
     if not data then return end
@@ -348,10 +391,10 @@ local function onEntityCloned(event)
     end
 
     local src_unit = src.unit_number
-    if src.name == name_prefix then
+    if src.name == const.filter_combinator_name then
         replace_combinator(data.main, dst)
         data.main = dst
-    elseif src.name == name_prefix .. '-ac' or src.name == name_prefix .. '-dc' then
+    elseif src.name == const.internal_ac_name or src.name == const.internal_dc_name then
         for i, e in pairs(data.calc) do
             if e and e.valid and e.unit_number == src_unit then
                 replace_combinator(data.calc[i], dst)
@@ -375,7 +418,7 @@ local function onEntityCloned(event)
             replace_combinator(data.inp, dst)
             data.inp = dst
         end
-    elseif src.name == name_prefix .. '-cc' then
+    elseif src.name == const.internal_cc_name then
         if data.cc.unit_number == src_unit then
             replace_combinator(data.cc, dst)
             data.cc = dst
@@ -437,7 +480,7 @@ local function on_switch_enabled(event)
     data.cc.get_or_create_control_behavior().enabled = data.config.enabled
     data.ex.get_or_create_control_behavior().enabled = data.config.enabled
     data.main.active = data.config.enabled
-    ui.ui.sil_fc_content.status_flow.status.caption = data.config.enabled and {'entity-status.working'} or {'entity-status.disabled'}
+    ui.ui.sil_fc_content.status_flow.status.caption = data.config.enabled and { 'entity-status.working' } or { 'entity-status.disabled' }
     ui.ui.sil_fc_content.status_flow.lamp.sprite = data.config.enabled and 'flib_indicator_green' or 'flib_indicator_red'
     update_entity(data)
 end
@@ -527,7 +570,7 @@ local function on_signal_selected(event)
     local signal = event.element.elem_value;
     local slot = event.element.tags.idx --[[@as integer]]
     local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-    behavior.set_signal(slot, signal and {signal = signal, count = 1} or nil)
+    behavior.set_signal(slot, signal and { signal = signal, count = 1 } or nil)
 end
 
 -- for some reason this shit ain't doing anything
@@ -545,7 +588,6 @@ flib_gui.handle_events()
 
 --- @param cc LuaEntity
 local function make_grid_buttons(cc)
-
     local behavior = cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     local list = {}
     local empty_slot_count = 0
@@ -553,10 +595,12 @@ local function make_grid_buttons(cc)
     for i = 1, behavior.signals_count do
         local sig = behavior.get_signal(i)
         if (sig.signal) then
-            table.insert(list, {type = 'choose-elem-button', tags = {idx = i}, style = 'slot_button', elem_type = 'signal', signal = sig.signal, handler = {[defines.events.on_gui_elem_changed] = on_signal_selected}})
+            table.insert(list,
+                { type = 'choose-elem-button', tags = { idx = i }, style = 'slot_button', elem_type = 'signal', signal = sig.signal, handler = { [defines.events.on_gui_elem_changed] = on_signal_selected } })
         elseif empty_slot_count < settings.startup['sfc-empty-slots'].value or #list % 10 ~= 0 then
             empty_slot_count = empty_slot_count + 1
-            table.insert(list, {type = 'choose-elem-button', tags = {idx = i}, style = 'slot_button', elem_type = 'signal', handler = {[defines.events.on_gui_elem_changed] = on_signal_selected}})
+            table.insert(list,
+                { type = 'choose-elem-button', tags = { idx = i }, style = 'slot_button', elem_type = 'signal', handler = { [defines.events.on_gui_elem_changed] = on_signal_selected } })
         end
     end
     return list
@@ -565,15 +609,16 @@ end
 
 --- @param event EventData.on_gui_opened
 local function onGuiOpen(event)
-    if not (event.entity and event.entity.valid and event.entity.name == name_prefix) then
+    if not (event.entity and event.entity.valid and event.entity.name == const.filter_combinator_name) then
         -- some other GUI was opened, we don't care
         return
     end
-    
+
     local data = locate_config(event.entity)
     local player = game.players[event.player_index]
     if not data then
-        log('Data missing for ' .. event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
+        log('Data missing for ' ..
+        event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
         player.opened = nil
         return
     end
@@ -590,7 +635,7 @@ local function onGuiOpen(event)
     local ui = {
         type = "frame",
         name = "sil_fc_filter_ui",
-        direction  = "vertical",
+        direction = "vertical",
         handler = { [defines.events.on_gui_closed] = on_window_closed },
         { -- Title Bar
             type = "flow",
@@ -599,14 +644,14 @@ local function onGuiOpen(event)
             {
                 type = "label",
                 style = "frame_title",
-                caption = {'entity-name.sil-filter-combinator'},
+                caption = { const.fc_entity_name },
                 drag_target = "sil_fc_filter_ui",
-                ignored_by_interaction = true
+                ignored_by_interaction = true,
             },
             {
                 type = "empty-widget",
                 style = "flib_titlebar_drag_handle",
-                ignored_by_interaction = true
+                ignored_by_interaction = true,
             },
             {
                 type = "sprite-button",
@@ -616,11 +661,11 @@ local function onGuiOpen(event)
                 hovered_sprite = "utility/close_black",
                 clicked_sprite = "utility/close_black",
                 mouse_button_filter = { "left" },
-                handler = { [defines.events.on_gui_click] = on_window_closed}
-            }
+                handler = { [defines.events.on_gui_click] = on_window_closed },
+            },
         }, -- Title Bar End
         {
-            type= "frame",
+            type = "frame",
             style = "inside_shallow_frame_with_padding",
             name = "sil_fc_content",
             direction = "vertical",
@@ -632,18 +677,28 @@ local function onGuiOpen(event)
                     type = "sprite",
                     name = "lamp",
                     style = "flib_indicator",
-                    sprite = data.config.enabled and "flib_indicator_green" or "flib_indicator_red"
+                    sprite = data.config.enabled and "flib_indicator_green" or "flib_indicator_red",
                 },
                 {
                     type = "label",
                     style = "label",
                     name = "status",
-                    caption = data.config.enabled and {'entity-status.working'} or {'entity-status.disabled'}
-                }
+                    caption = data.config.enabled and { 'entity-status.working' } or { 'entity-status.disabled' },
+                },
+                {
+                    type = "empty-widget",
+                    spacer = { style = { horizontally_stretchable = true } },
+                },
+                {                
+                    type = "label",
+                    style = 'label',
+                    name = 'id',
+                    caption = "ID: " .. data.main.unit_number
+                },
             },
             { -- Add some spacing
                 type = "frame",
-                style = "container_invisible_frame_with_title"
+                style = "container_invisible_frame_with_title",
             },
             {
                 type = "frame",
@@ -653,11 +708,11 @@ local function onGuiOpen(event)
                     type = "entity-preview",
                     name = "preview",
                     style = "wide_entity_button",
-                }
+                },
             },
             { -- Add some spacing
                 type = "frame",
-                style = "container_invisible_frame_with_title"
+                style = "container_invisible_frame_with_title",
             },
             {
                 type = "frame",
@@ -665,19 +720,19 @@ local function onGuiOpen(event)
                 {
                     type = "label",
                     style = "heading_3_label",
-                    caption = {'gui-constant.output'},
+                    caption = { 'gui-constant.output' },
                 },
             },
             {
                 type = "switch",
                 switch_state = data.config.enabled and "right" or "left",
-                right_label_caption = {'gui-constant.on'},
-                left_label_caption = {'gui-constant.off'},
-                handler = { [defines.events.on_gui_switch_state_changed] = on_switch_enabled},
+                right_label_caption = { 'gui-constant.on' },
+                left_label_caption = { 'gui-constant.off' },
+                handler = { [defines.events.on_gui_switch_state_changed] = on_switch_enabled },
             },
             { -- Add some spacing
                 type = "frame",
-                style = "container_invisible_frame_with_title"
+                style = "container_invisible_frame_with_title",
             },
             {
                 type = "frame",
@@ -685,21 +740,21 @@ local function onGuiOpen(event)
                 {
                     type = "label",
                     style = "heading_3_label",
-                    caption = {'sil-filter-combinator-gui.mode-heading'},
+                    caption = { const:locale('mode-heading') },
                 },
             },
             {
                 type = "switch",
                 switch_state = data.config.exclusive and "right" or "left",
-                right_label_caption = {'sil-filter-combinator-gui.mode-exclusive'},
-                right_label_tooltip = {'sil-filter-combinator-gui.mode-exclusive-tooltip'},
-                left_label_caption = {'sil-filter-combinator-gui.mode-inclusive'},
-                left_label_tooltip = {'sil-filter-combinator-gui.mode-inclusive-tooltip'},
-                handler = { [defines.events.on_gui_switch_state_changed] = on_switch_exclusive}
+                right_label_caption = { const:locale('mode-exclusive') },
+                right_label_tooltip = { const:locale('mode-exclusive-tooltip') },
+                left_label_caption = { const:locale('mode-inclusive') },
+                left_label_tooltip = { const:locale('mode-inclusive-tooltip') },
+                handler = { [defines.events.on_gui_switch_state_changed] = on_switch_exclusive },
             },
             { -- Add some spacing
                 type = "frame",
-                style = "container_invisible_frame_with_title"
+                style = "container_invisible_frame_with_title",
             },
             {
                 type = "flow",
@@ -707,27 +762,27 @@ local function onGuiOpen(event)
                 direction = "horizontal",
                 {
                     type = "checkbox",
-                    caption = {'sil-filter-combinator-gui.mode-wire'},
+                    caption = { const:locale('mode-wire') },
                     name = "sil_fc_wire_content",
                     state = data.config.filter_input_from_wire,
-                    handler = { [defines.events.on_gui_checked_state_changed] = on_toggle_wire_mode}
+                    handler = { [defines.events.on_gui_checked_state_changed] = on_toggle_wire_mode },
                 },
                 {
                     type = "radiobutton",
                     state = data.config.filter_input_wire == defines.wire_type.red,
                     -- enabled = data.config.filter_input_from_wire,
-                    caption = {'item-name.red-wire'},
+                    caption = { 'item-name.red-wire' },
                     name = "sil_fc_red_wire",
-                    handler = { [defines.events.on_gui_checked_state_changed] = on_switch_wire}
+                    handler = { [defines.events.on_gui_checked_state_changed] = on_switch_wire },
                 },
                 {
                     type = "radiobutton",
                     state = data.config.filter_input_wire == defines.wire_type.green,
                     -- enabled = data.config.filter_input_from_wire,
-                    caption = {'item-name.green-wire'},
+                    caption = { 'item-name.green-wire' },
                     name = "sil_fc_green_wire",
-                    handler = { [defines.events.on_gui_checked_state_changed] = on_switch_wire}
-                }
+                    handler = { [defines.events.on_gui_checked_state_changed] = on_switch_wire },
+                },
             },
             { -- Just so we can hide this entire block in one go
                 type = "flow",
@@ -736,7 +791,7 @@ local function onGuiOpen(event)
                 name = "sil_fc_row3",
                 { -- Add some spacing
                     type = "frame",
-                    style = "container_invisible_frame_with_title"
+                    style = "container_invisible_frame_with_title",
                 },
                 {
                     type = "line",
@@ -747,7 +802,7 @@ local function onGuiOpen(event)
                     {
                         type = "label",
                         style = "heading_3_label",
-                        caption = {'sil-filter-combinator-gui.signals-heading'},
+                        caption = { const:locale('signals-heading') },
                     },
                 },
                 {
@@ -770,12 +825,12 @@ local function onGuiOpen(event)
                             -- style = "inset_frame_container_table", -- Massive gaps
                             -- style = "logistic_gui_table", -- even worse gaps. No idea where this is ever used
                             column_count = 10,
-                            children = slot_buttons
+                            children = slot_buttons,
                         },
-                    }
-                }
-            }
-        }
+                    },
+                },
+            },
+        },
     }
     if not global.sil_fc_gui then
         global.sil_fc_gui = {}
@@ -784,7 +839,7 @@ local function onGuiOpen(event)
     created.sil_fc_filter_ui.auto_center = true
     created.sil_fc_content.preview_frame.preview.entity = data.main
     player.opened = created.sil_fc_filter_ui
-    global.sil_fc_gui[event.player_index] = {ui = created, unit = event.entity.unit_number}
+    global.sil_fc_gui[event.player_index] = { ui = created, unit = event.entity.unit_number }
 end
 
 --#endregion
@@ -794,7 +849,7 @@ local function onEntityPasted(event)
     if not pl or not pl.valid or pl.force ~= event.source.force or pl.force ~= event.destination.force then
         return
     end
-    if event.source.name ~= name_prefix or event.destination.name ~= name_prefix then
+    if event.source.name ~= const.filter_combinator_name or event.destination.name ~= const.filter_combinator_name then
         return
     end
     local dest_idx = global.sil_filter_combinators[event.destination.unit_number]
@@ -852,10 +907,10 @@ local function onEntityCopy(event)
     end
 
     local player = game.players[event.player_index]
-    local entities = player.surface.find_entities_filtered{ area = event.area, force = player.force }
+    local entities = player.surface.find_entities_filtered { area = event.area, force = player.force }
     local result = {}
     for _, ent in pairs(entities) do
-        if ent.name == name_prefix then
+        if ent.name == const.filter_combinator_name then
             table.insert(result, ent.unit_number)
         end
     end
@@ -900,7 +955,7 @@ local function ccs_get_info(entity)
     local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
     return {
         cc_config = data.config,
-        cc_params = behavior.parameters
+        cc_params = behavior.parameters,
     }
 end
 
@@ -908,7 +963,7 @@ end
 ---@param position MapPosition
 ---@param force LuaForce
 local function ccs_create_packed_entity(info, surface, position, force)
-    local ent = surface.create_entity{name = name_prefix .. '-packed', position = position, force = force, direction = info.direction, raise_built = false}
+    local ent = surface.create_entity { name = const.filter_combinator_name_packed, position = position, force = force, direction = info.direction, raise_built = false }
 
     if ent then
         create_entity(ent)
@@ -928,7 +983,7 @@ end
 ---@param surface LuaSurface
 ---@param force LuaForce
 local function ccs_create_entity(info, surface, force)
-    local ent = surface.create_entity{name = name_prefix, position = info.position, force = force, direction = info.direction, raise_built = false}
+    local ent = surface.create_entity { name = const.filter_combinator_name, position = info.position, force = force, direction = info.direction, raise_built = false }
     if ent then
         create_entity(ent)
         local idx = global.sil_filter_combinators[ent.unit_number]
@@ -951,29 +1006,30 @@ local function initCompat()
         script.on_event(remote.call("PickerDollies", "dolly_moved_entity_id"), onEntityMoved)
     end
     if remote.interfaces['PickerDollies'] and remote.interfaces['PickerDollies']['add_oblong_name'] then
-        remote.call('PickerDollies', 'add_oblong_name', name_prefix)
+        remote.call('PickerDollies', 'add_oblong_name', const.filter_combinator_name)
     end
     if script.active_mods['compaktcircuit'] and remote.interfaces['compaktcircuit'] and remote.interfaces['compaktcircuit']['add_combinator'] then
-        remote.add_interface(name_prefix, {
+        remote.add_interface(const.filter_combinator_name, {
             get_info = ccs_get_info,
             create_packed_entity = ccs_create_packed_entity,
-            create_entity = ccs_create_entity
+            create_entity = ccs_create_entity,
         })
+
         remote.call('compaktcircuit', 'add_combinator', {
-            name = name_prefix,
-            packed_names = { name_prefix .. '-packed' },
-            interface_name = name_prefix
+            name = const.filter_combinator_name,
+            packed_names = { const.filter_combinator_name_packed },
+            interface_name = const.filter_combinator_name,
         })
     end
 end
 
 --- @param changed ConfigurationChangedData
 local function on_configuration_changed(changed)
-    if changed.mod_changes['silent-filter-combinator'] and changed.mod_changes['silent-filter-combinator'].new_version == '1.0.0' then
+    if changed.mod_changes[const.filter_combinator_name] and changed.mod_changes[const.filter_combinator_name].new_version == '1.0.0' then
         -- Apply second stage of migration
         for _, mig in pairs(global.sil_fc_migration_data) do
             if mig.ent and mig.con then
-                local _, ent, __ = mig.ent.silent_revive{raise_revive = true}
+                local _, ent, __ = mig.ent.silent_revive { raise_revive = true }
                 if ent then
                     for _, con in pairs(mig.con) do
                         ent.connect_neighbour(con)
@@ -1034,8 +1090,8 @@ end
 script.on_nth_tick(301, housekeeping)
 
 script.on_event(defines.events.on_gui_opened, onGuiOpen)
-script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, onEntityDeleted)
-script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive}, onEntityCreated)
+script.on_event({ defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died }, onEntityDeleted)
+script.on_event({ defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive }, onEntityCreated)
 script.on_event(defines.events.on_entity_cloned, onEntityCloned)
 script.on_event(defines.events.on_entity_settings_pasted, onEntityPasted)
 

@@ -2,8 +2,11 @@
 --
 -- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
 
+local const = require('lib.constants')
+
 local cc = table.deepcopy(data.raw['constant-combinator']['constant-combinator'])
-cc.name = 'sil-filter-combinator-cc'
+cc.name = const.internal_cc_name -- 'sil-filter-combinator-cc'
+
 cc.icons = {{
     icon = data.raw['constant-combinator']['constant-combinator'].icon,
     tint = {r = 0.682, g = 0, b = 0.682, a = 0.8}
