@@ -687,7 +687,7 @@ local function onGuiOpen(event)
                 },
                 {
                     type = "empty-widget",
-                    spacer = { style = { horizontally_stretchable = true } },
+                    name = "spacer",
                 },
                 {                
                     type = "label",
@@ -837,6 +837,7 @@ local function onGuiOpen(event)
     end
     local created = flib_gui.add(player.gui.screen, ui)
     created.sil_fc_filter_ui.auto_center = true
+    created.sil_fc_filter_ui.sil_fc_content.status_flow.spacer.style.horizontally_stretchable = true
     created.sil_fc_content.preview_frame.preview.entity = data.main
     player.opened = created.sil_fc_filter_ui
     global.sil_fc_gui[event.player_index] = { ui = created, unit = event.entity.unit_number }
