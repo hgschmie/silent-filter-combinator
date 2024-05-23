@@ -7,6 +7,8 @@ local const = {}
 --------------------------------------------------------------------------------
 
 const.prefix = 'hps:fc-'
+const.name = 'filter-combinator'
+const.gfx_location = '__filter-combinator-improved__/graphics/'
 
 ---@param value string
 ---@return string result
@@ -30,7 +32,9 @@ end
 
 --------------------------------------------------------------------------------
 
-const.filter_combinator_name = const:with_prefix('filter-combinator')
+const.filter_combinator_name = const:with_prefix(const.name)
+const.name_prefix_len = #const.filter_combinator_name
+
 const.filter_combinator_name_packed = const:with_prefix('filter-combinator-packed')
 
 const.internal_ac_name = const:with_prefix('filter-combinator-ac')
