@@ -1,0 +1,28 @@
+----------------------------------------------------------------------------------------------------
+--- Initialize this mod's globals
+----------------------------------------------------------------------------------------------------
+
+---@class ModThis
+---@field settings FrameworkSettings?
+---@field runtime ModRuntime?
+local This = {
+  settings = nil,
+  runtime = nil,
+}
+
+function This.init(self)
+  self.settings = Mod.settings:add_startup(require("scripts.settings-startup"))
+
+  -- self.StaCo = require("scripts/staco/staco")
+
+  if (script) then
+    self.runtime = require("scripts.runtime") --[[@as ModRuntime ]]
+    self.runtime:init()
+
+    -- self.gui = require("scripts/gui/gui")
+  end
+end
+
+----------------------------------------------------------------------------------------------------
+
+return This
