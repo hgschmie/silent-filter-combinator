@@ -1,15 +1,15 @@
--- Copyright 2023 Sil3ntStorm https://github.com/Sil3ntStorm
+--------------------------------------------------------------------------------
 --
--- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
+-- There are modules that add items late in the init stage (data-updates).
+--
+-- So we create a final count of all items at the very latest state of the data initialization.
+--
+--------------------------------------------------------------------------------
 
--- The sole reason for this file to even exist, is other mods misbehaving and doing stupid shit they are not supposed to be doing!
 
 local const = require('lib.constants')
 
-local maxCount = data.raw["constant-combinator"][const.internal_cc_name].item_slot_count;
-
--- Initialize to 20 for some safety margin for badly written mods adding items when they should not!
--- All prototypes should already exist when the first data-updates runs!
+-- 20 is a fudge factor to account for some modules adding items in their final-fixes stage
 local count = 20;
 -- count all existing items, now that every mod should be done adding theirs
 for _, info in pairs(data.raw) do
@@ -20,8 +20,4 @@ for _, info in pairs(data.raw) do
     end
 end
 
-if (count > maxCount) then
-    data.raw["constant-combinator"][const.internal_cc_name].item_slot_count = count;
-    log(string.format('Updated combinators to %d slots because some mod(s) added %d  prototypes AFTER first data stage, which is not supposed to be done!',
-                      count, (count - maxCount) + 40));
-end
+data.raw['constant-combinator'][const.internal_cc_name].item_slot_count = count

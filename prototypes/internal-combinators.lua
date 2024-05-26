@@ -79,7 +79,6 @@ local cc = table.deepcopy(data.raw['constant-combinator']['constant-combinator']
 cc.name = const.internal_cc_name
 
 -- ConstantCombinatorPrototype
-cc.item_slot_count = 200
 cc.sprites = util.empty_sprite(1)
 cc.activity_led_sprites = util.empty_sprite(1)
 cc.activity_led_light_offsets = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }
