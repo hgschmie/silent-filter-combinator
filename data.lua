@@ -1,12 +1,17 @@
--- Copyright 2023 Sil3ntStorm https://github.com/Sil3ntStorm
---
--- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
+--------------------------------------------------------------------------------
+-- Data setup
+--------------------------------------------------------------------------------
 
+require('lib.init')
 local const = require('lib.constants')
+
+--------------------------------------------------------------------------------
 
 require('prototypes.internal-combinators')
 require('prototypes.filter-combinator')
 require('prototypes.style')
+
+--------------------------------------------------------------------------------
 
 local item = table.deepcopy(data.raw.item['arithmetic-combinator']) --[[@as data.ItemPrototype]]
 item.name = const.filter_combinator_name

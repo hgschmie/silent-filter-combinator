@@ -4,7 +4,7 @@
 
 local const = require('lib.constants')
 
--- Framework
+-- Framework core
 Mod = require('framework.mod')
 
 Mod:init {
@@ -12,6 +12,10 @@ Mod:init {
    prefix = const.prefix,
    -- name is a human readable name
    name = const.name,
+   -- location for all the graphics files
+   gfx_location = const.gfx_location,
+
+   -- logging tag
    log_tag = '[img=item/' .. const.name .. ']'
 }
 
