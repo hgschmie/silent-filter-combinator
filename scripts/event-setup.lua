@@ -26,22 +26,6 @@ local function onEntityDeleted(event)
     FiCo.delete_entity(event.entity)
 end
 
-local function onEntityMoved(event)
-    -- Picker Dollies Support
-    -- event.player_index
-    -- event.mod_name
-    -- event.name
-    -- event.moved_entity
-    -- event.start_pos
-    -- event.tick
-    if (not (event.moved_entity and event.moved_entity.valid)) then
-        return
-    end
-    if event.moved_entity.name == const.filter_combinator_name then
-       FiCo.move_entity(event.moved_entity)
-    end
-end
-
 --- @param event EventData.on_entity_cloned
 local function onEntityCloned(event)
     -- Space Exploration Support

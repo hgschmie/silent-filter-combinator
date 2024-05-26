@@ -37,16 +37,25 @@ function Mod:init(config)
    self.NAME = config.name
    self.PREFIX = config.prefix
 
-   self.settings = require("framework.settings") --[[ @as FrameworkSettings ]]
-   self.logger = require("framework.logger") --[[ @as FrameworkLogger ]]
+   self.settings = require('framework.settings') --[[ @as FrameworkSettings ]]
+   self.logger = require('framework.logger') --[[ @as FrameworkLogger ]]
 
    if config.log_tag then
       self.logger.MOD_TAG = config.log_tag
    end
 
    if (script) then
-      self.runtime = require("framework.runtime")
-      require("framework.event-setup"):register_all()
+      -- runtime
+      self.runtime = require('framework.runtime')
+      self.gui_manager = require('framework.gui_manager')
+      self.gui_manager.init(config.prefix)
+
+      require("framework.event-setup").init()
+   elseif(settings) then
+      -- prototype
+      require('framework.prototypes.sprite')
+      require('framework.prototypes.style')
+      require('framework.prototypes.technology-slot-style')
    end
 end
 

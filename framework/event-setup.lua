@@ -6,9 +6,7 @@ local events = require('__stdlib__.stdlib.event.event')
 
 ----------------------------------------------------------------------------------------------------
 
-local EventSetup = { }
-
-function EventSetup:register_all()
+local function init()
   -- Runtime settings changed
   events.register(defines.events.on_runtime_mod_setting_changed, function()
     Mod.settings:load("runtime", true)
@@ -18,4 +16,4 @@ end
 
 ----------------------------------------------------------------------------------------------------
 
-return EventSetup
+return { init = init }

@@ -2,6 +2,8 @@
 --
 -- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
 
+local Events = require('__stdlib__.stdlib.event.event')
+
 require('lib.init')
 
 local const = require('lib.constants')
@@ -60,9 +62,26 @@ end
 
 --#endregion
 
+local function onEntityMoved(event)
+    -- Picker Dollies Support
+    -- event.player_index
+    -- event.mod_name
+    -- event.name
+    -- event.moved_entity
+    -- event.start_pos
+    -- event.tick
+    if (not (event.moved_entity and event.moved_entity.valid)) then
+        return
+    end
+    if event.moved_entity.name == const.filter_combinator_name then
+       FiCo.move_entity(event.moved_entity)
+    end
+end
+
+
 local function initCompat()
     if remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["dolly_moved_entity_id"] then
-        script.on_event(remote.call("PickerDollies", "dolly_moved_entity_id"), onEntityMoved)
+        Events.on_event(remote.call("PickerDollies", "dolly_moved_entity_id"), onEntityMoved)
     end
     if remote.interfaces['PickerDollies'] and remote.interfaces['PickerDollies']['add_oblong_name'] then
         remote.call('PickerDollies', 'add_oblong_name', const.filter_combinator_name)
@@ -84,10 +103,9 @@ end
 
 require('scripts.event-setup'):init()
 
--- initialize the GUI
 require('scripts.gui').init()
 
-script.on_init(function()
+Events.on_init(function()
     if not global.sil_filter_combinators then
         global.sil_filter_combinators = {}
     end
@@ -99,6 +117,6 @@ script.on_init(function()
     initCompat()
 end)
 
-script.on_load(function()
+Events.on_load(function()
     initCompat()
 end)
