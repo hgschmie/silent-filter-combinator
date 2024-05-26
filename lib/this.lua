@@ -5,6 +5,7 @@
 ---@class ModThis
 ---@field settings FrameworkSettings?
 ---@field runtime ModRuntime?
+---@field gui Gui
 local This = {
   settings = nil,
   runtime = nil,
@@ -21,6 +22,7 @@ function This.init(self)
     self.runtime:init()
 
     self.gui = require("scripts.gui")
+    self.gui.init()
   end
 end
 

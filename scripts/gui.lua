@@ -2,8 +2,8 @@ local Events = require('__stdlib__.stdlib.event.event')
 local Is = require('__stdlib__.stdlib.utils.is')
 
 local const = require('lib.constants')
-local FrameworkGuiManager = Mod.gui_manager
 
+local FrameworkGuiManager = Mod.gui_manager --[[@as FrameworkGuiManager]]
 
 --- @type FilterCombinatorConfig
 local FiCo = require('scripts.filter_combinator')
@@ -417,9 +417,8 @@ local function onGuiOpened(event)
     }
 end
 
---#endregion
-
-
+---@class Gui
+---@field init function
 return {
     init = function()
         Events.on_event(defines.events.on_gui_opened, onGuiOpened)

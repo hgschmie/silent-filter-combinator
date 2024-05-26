@@ -103,8 +103,6 @@ end
 
 require('scripts.event-setup'):init()
 
-require('scripts.gui').init()
-
 Events.on_init(function()
     if not global.sil_filter_combinators then
         global.sil_filter_combinators = {}
