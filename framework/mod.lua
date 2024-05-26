@@ -10,6 +10,7 @@
 --- @field settings FrameworkSettings?
 --- @field logger FrameworkLogger?
 --- @field runtime FrameworkRuntime?
+--- @field gui_manager FrameworkGuiManager?
 local Mod = {
    --- The non-localised prefix (textual ID) of this mod.
    -- Must be set as the earliest possible time, as virtually all other framework parts use this.
@@ -26,6 +27,8 @@ local Mod = {
    logger = nil,
 
    runtime = nil,
+
+   gui_manager = nil,
 }
 
 ---@param config table

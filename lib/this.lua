@@ -8,6 +8,7 @@
 local This = {
   settings = nil,
   runtime = nil,
+  gui = nil,
 }
 
 function This.init(self)
@@ -19,7 +20,7 @@ function This.init(self)
     self.runtime = require("scripts.runtime") --[[@as ModRuntime ]]
     self.runtime:init()
 
-    -- self.gui = require("scripts/gui/gui")
+    self.gui = require("scripts.gui")
   end
 end
 
