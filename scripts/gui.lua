@@ -140,7 +140,7 @@ local function make_grid_buttons(cc)
                              signal = sig.signal,
                              handler = { [defines.events.on_gui_elem_changed] = onSelectSignal },
                          })
-        elseif empty_slot_count < settings.startup['sfc-empty-slots'].value or #list % 10 ~= 0 then
+        elseif empty_slot_count < Mod.settings:startup().empty_slots or #list % 10 ~= 0 then
             empty_slot_count = empty_slot_count + 1
             table.insert(list,
                          {
