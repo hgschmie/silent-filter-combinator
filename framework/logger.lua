@@ -32,7 +32,7 @@ end
 --- @param message string Message to send to the game log.
 --- @param ... any additional arguments for string.format
 function Logger:logf(message, ...)
-   log(string.format(message, table.unpack(arg)))
+   log(string.format(message, table.unpack({...})))
 end
 
 --- Log a message only if debug mode is enabled in startup settings.
@@ -45,7 +45,7 @@ end
 --- @param message string Message to send to the game log.
 --- @param ... any additional arguments for string.format
 function Logger:debugf(message, ...)
-   if (Mod.settings:startup().debug_mode) then self:log(string.format(message, table.unpack(arg))) end
+   if (Mod.settings:startup().debug_mode) then self:log(string.format(message, table.unpack({...}))) end
 end
 
 ----------------------------------------------------------------------------------------------------
