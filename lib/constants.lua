@@ -8,7 +8,22 @@ local const = {}
 
 const.prefix = 'hps:fc-'
 const.name = 'filter-combinator'
-const.gfx_location = '__filter-combinator-improved__/graphics/'
+const.root = '__filter-combinator-improved__'
+const.gfx_location = const.root .. '/graphics/'
+
+function const:mod_init()
+   return {
+      -- prefix is the internal mod prefix
+      prefix = const.prefix,
+      -- name is a human readable name
+      name = const.name,
+
+      root = const.root,
+
+      -- logging tag
+      log_tag = '[img=item/' .. const.name .. ']',
+   }
+end
 
 ---@param value string
 ---@return string result

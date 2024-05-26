@@ -1,5 +1,25 @@
+----------------------------------------------------------------------------------------------------
+-- Data Utility
+----------------------------------------------------------------------------------------------------
+
 --- @class FrameworkDataUtil
 local FrameworkDataUtil = {}
+
+function FrameworkDataUtil:init(mod_root)
+  --- An empty image. This image is 8x8 to facilitate usage with GUI styles.
+  self.empty_image = mod_root .. "/framework/graphics/empty.png"
+
+  --- A black image, for use with tool backgrounds. This image is 1x1.
+  self.black_image = mod_root .. "/framework/graphics/black.png"
+
+  --- A desaturated planner image. Tint this sprite to easily add your own planners.
+  self.planner_base_image = mod_root .. "/framework/graphics/planner.png"
+
+  --- A dark red button tileset. Used for the `flib_tool_button_dark_red` style.
+  self.dark_red_button_tileset = mod_root .. "/framework/graphics/dark-red-button.png"
+
+  return self
+end
 
 --- Copy a prototype, assigning a new name and minable properties.
 --- @param prototype table
@@ -9,7 +29,7 @@ local FrameworkDataUtil = {}
 function FrameworkDataUtil.copy_prototype(prototype, new_name, remove_icon)
   if not prototype.type or not prototype.name then
     error("Invalid prototype: prototypes must have name and type properties.")
-    return   --- @diagnostic disable-line
+    return --- @diagnostic disable-line
   end
   local p = table.deepcopy(prototype)
   p.name = new_name
@@ -100,7 +120,7 @@ local exponent_multipliers = {
   ["f"] = 0.000000000000001,
   ["p"] = 0.000000000001,
   ["n"] = 0.000000001,
-  ["u"] = 0.000001,   -- μ is invalid
+  ["u"] = 0.000001, -- μ is invalid
   ["m"] = 0.001,
   ["c"] = 0.01,
   ["d"] = 0.1,
@@ -108,7 +128,7 @@ local exponent_multipliers = {
   ["da"] = 10,
   ["h"] = 100,
   ["k"] = 1000,
-  ["K"] = 1000,   -- This isn't SI, but meh
+  ["K"] = 1000, -- This isn't SI, but meh
   ["M"] = 1000000,
   ["G"] = 1000000000,
   ["T"] = 1000000000000,
@@ -161,18 +181,6 @@ function FrameworkDataUtil.build_sprite(name, position, filename, size, mipmap_c
   end
   return def
 end
-
---- An empty image. This image is 8x8 to facilitate usage with GUI styles.
-FrameworkDataUtil.empty_image = "/framework/graphics/empty.png"
-
---- A black image, for use with tool backgrounds. This image is 1x1.
-FrameworkDataUtil.black_image = "/framework/graphics/black.png"
-
---- A desaturated planner image. Tint this sprite to easily add your own planners.
-FrameworkDataUtil.planner_base_image = "/framework/graphics/planner.png"
-
---- A dark red button tileset. Used for the `flib_tool_button_dark_red` style.
-FrameworkDataUtil.dark_red_button_tileset = "/framework/graphics/dark-red-button.png"
 
 return FrameworkDataUtil
 

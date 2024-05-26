@@ -1,3 +1,5 @@
+local Is = require('__stdlib__.stdlib.utils.is')
+
 ----------------------------------------------------------------------------------------------------
 
 --- Mod object access point
@@ -19,6 +21,9 @@ local Mod = {
    --- Human readable, non-localized name
    NAME = '<unknown>',
 
+   --- Root location
+   ROOT = '__unknown__',
+
    --- Name of the field in `global` to store framework persistent runtime data.
    STORAGE = "framework",
 
@@ -31,11 +36,16 @@ local Mod = {
    gui_manager = nil,
 }
 
----@param config table
+---@param config FrameworkModConfig
 function Mod:init(config)
+   if Is.Function(config) then
+      config = config()
+   end
+
    assert(config, 'no configuration provided')
    assert(config.name, 'config.name must contain the mod name')
    assert(config.prefix, 'config.prefix must contain the mod prefix')
+   assert(config.root, 'config.root must be contain the module root name!')
 
    self.NAME = config.name
    self.PREFIX = config.prefix
@@ -48,20 +58,24 @@ function Mod:init(config)
    end
 
    if (script) then
-      -- runtime
+      -- runtime stage
       self.runtime = require('framework.runtime')
       self.gui_manager = require('framework.gui_manager')
       self.gui_manager.init(config.prefix)
 
       require("framework.event-setup").init()
-   elseif(settings) then
-      -- prototype
-      require('framework.prototypes.sprite')
-      require('framework.prototypes.style')
-      require('framework.prototypes.technology-slot-style')
+   elseif (settings) then
+      -- prototype stage
+      require('framework.prototype').init(config.root)
    end
 end
 
 ---------------------------------------------------------------------------------------------------
 
 return Mod
+
+--- @class FrameworkModConfig
+--- @field name string The human readable name for the module
+--- @field prefix string A prefix for all game registered elements
+--- @field root string The module root name
+--- @field log_tag string? A custom logger tag
