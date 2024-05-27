@@ -86,7 +86,7 @@ function FrameworkGui:create_child_element(parent, child)
 
    -- add tag for event dispatching
    local tags = gui_element.tags --[[@as Tags]]
-   tags[self.prefix .. "id"] = self.id
+   tags[self.prefix .. 'id'] = self.id
    gui_element.tags = tags
 
    -- process additional attributes
@@ -235,7 +235,7 @@ function FrameworkGui:dispatch(ev)
 
    -- sanity check
    local tags = elem.tags --[[@as Tags]]
-   local gui_id = tags[self.prefix .. "id"]
+   local gui_id = tags[self.prefix .. 'id']
    assert(gui_id == self.id)
 
    local event_id = ev.name
