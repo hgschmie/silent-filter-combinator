@@ -1,4 +1,4 @@
-local events = require('__stdlib__.stdlib.event.event')
+local Events = require('__stdlib__.stdlib.event.event')
 
 ----------------------------------------------------------------------------------------------------
 
@@ -10,10 +10,9 @@ local Runtime = {
 ----------------------------------------------------------------------------------------------------
 
 
-function Runtime:init()
-   events.on_load(function()
-         -- self:rebuild_update_queue()
-    end)
-end
+
+Events.on_load(function()
+    -- self:rebuild_update_queue()
+end)
 
 return Runtime --[[ @as ModRuntime ]]
