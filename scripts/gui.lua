@@ -3,13 +3,13 @@ local Is = require('__stdlib__.stdlib.utils.is')
 
 local const = require('lib.constants')
 
-local FrameworkGuiManager = Mod.gui_manager --[[@as FrameworkGuiManager]]
-
 --- @type FilterCombinatorConfig
 local FiCo = require('scripts.filter_combinator')
 
 --- @class ModGui
 local ModGui = {}
+
+----------------------------------------------------------------------------------------------------
 
 --- @param player LuaPlayer
 local function destroy_gui(player)
@@ -25,14 +25,20 @@ local function destroy_gui(player)
         player.opened = nil
     end
 
-    FrameworkGuiManager.destroy_gui(player_ui.ui)
+    Mod.gui_manager:destroy_gui(player_ui.ui)
 end
 
+----------------------------------------------------------------------------------------------------
+
+--- close the UI (button or shortcut key)
+---
 --- @param event EventData.on_gui_click
 local function onWindowClosed(event)
     destroy_gui(game.players[event.player_index])
 end
 
+--- Enable / Disable switch
+---
 --- @param event EventData.on_gui_switch_state_changed
 local function onSwitchEnabled(event)
     local player_ui = global.sil_fc_gui[event.player_index]
@@ -55,6 +61,10 @@ local function onSwitchEnabled(event)
     FiCo.add_metatable(data.config):update_entity(data)
 end
 
+----------------------------------------------------------------------------------------------------
+
+--- inclusive/exclusive switch
+---
 --- @param event EventData.on_gui_switch_state_changed
 local function onSwitchExclusive(event)
     local player_ui = global.sil_fc_gui[event.player_index]
@@ -67,29 +77,39 @@ local function onSwitchExclusive(event)
     FiCo.add_metatable(data.config):update_entity(data)
 end
 
+--- switch green wire
 --- @param event EventData.on_gui_checked_state_changed
-local function onSwitchWire(event)
+local function onSwitchGreenWire(event)
     local player_ui = global.sil_fc_gui[event.player_index]
     if not (player_ui and player_ui.ui and player_ui.unit) then return end
 
     local data = FiCo.locate_config(player_ui.unit)
     if not data then return end
 
-    if event.element.name == player_ui.ui:generate_gui_name('red_wire_indicator') then
-        data.config.filter_input_wire = defines.wire_type.red
+    data.config.filter_input_wire = defines.wire_type.green
 
-        local green_wire = player_ui.ui:find_element('green_wire_indicator')
-        green_wire.state = not event.element.state
-    elseif event.element.name == player_ui.ui:generate_gui_name('green_wire_indicator') then
-        data.config.filter_input_wire = defines.wire_type.green
+    local red_wire = player_ui.ui:find_element('red_wire_indicator')
+    red_wire.state = not event.element.state
+FiCo.add_metatable(data.config):update_entity(data)
+end
 
-        local red_wire = player_ui.ui:find_element('red_wire_indicator')
-        red_wire.state = not event.element.state
-    else
-        return
-    end
+--- switch red wire
+--- @param event EventData.on_gui_checked_state_changed
+local function onSwitchRedWire(event)
+    local player_ui = global.sil_fc_gui[event.player_index]
+    if not (player_ui and player_ui.ui and player_ui.unit) then return end
+
+    local data = FiCo.locate_config(player_ui.unit)
+    if not data then return end
+
+    data.config.filter_input_wire = defines.wire_type.red
+
+    local green_wire = player_ui.ui:find_element('green_wire_indicator')
+    green_wire.state = not event.element.state
+
     FiCo.add_metatable(data.config):update_entity(data)
 end
+
 
 --- @param event  EventData.on_gui_checked_state_changed
 local function onToggleWireMode(event)
@@ -338,7 +358,7 @@ local function onGuiOpened(event)
                                 -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.red-wire' },
                                 name = 'red_wire_indicator',
-                                handler = { [defines.events.on_gui_checked_state_changed] = onSwitchWire },
+                                handler = { [defines.events.on_gui_checked_state_changed] = onSwitchRedWire },
                             },
                             {
                                 type = 'radiobutton',
@@ -346,7 +366,7 @@ local function onGuiOpened(event)
                                 -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.green-wire' },
                                 name = 'green_wire_indicator',
-                                handler = { [defines.events.on_gui_checked_state_changed] = onSwitchWire },
+                                handler = { [defines.events.on_gui_checked_state_changed] = onSwitchGreenWire },
                             },
                         },
                     },
@@ -412,7 +432,7 @@ local function onGuiOpened(event)
     if not global.sil_fc_gui then
         global.sil_fc_gui = {}
     end
-    local gui = FrameworkGuiManager.create_gui(player.gui.screen, ui)
+    local gui = Mod.gui_manager:create_gui(player.gui.screen, ui)
     player.opened = gui.root
     global.sil_fc_gui[event.player_index] = {
         ui = gui,
