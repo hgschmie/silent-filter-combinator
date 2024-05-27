@@ -5,25 +5,23 @@
 ---@class ModThis
 ---@field settings FrameworkSettings?
 ---@field runtime ModRuntime?
----@field gui Gui
+---@field gui ModGui?
+---@field other_mods string[]?
 local This = {
+  other_mods = nil,
   settings = nil,
   runtime = nil,
   gui = nil,
 }
 
-function This.init(self)
-  self.settings = Mod.settings:add_startup(require("scripts.settings-startup"))
+This.other_mods = { 'nullius', 'framework' }
+This.settings = Mod.settings:add_startup(require('scripts.settings-startup'))
 
-  -- self.StaCo = require("scripts/staco/staco")
+-- self.StaCo = require("scripts/staco/staco")
 
-  if (script) then
-    self.runtime = require("scripts.runtime") --[[@as ModRuntime ]]
-    self.runtime:init()
-
-    self.gui = require("scripts.gui")
-    self.gui.init()
-  end
+if (script) then
+  This.runtime = require('scripts.runtime') --[[@as ModRuntime ]]
+  This.gui = require('scripts.gui') --[[@as ModGui ]]
 end
 
 ----------------------------------------------------------------------------------------------------

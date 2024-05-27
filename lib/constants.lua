@@ -19,9 +19,6 @@ function const:mod_init()
       name = const.name,
 
       root = const.root,
-
-      -- logging tag
-      log_tag = '[img=item/' .. const.name .. ']',
    }
 end
 

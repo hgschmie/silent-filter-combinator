@@ -8,6 +8,9 @@ local FrameworkGuiManager = Mod.gui_manager --[[@as FrameworkGuiManager]]
 --- @type FilterCombinatorConfig
 local FiCo = require('scripts.filter_combinator')
 
+--- @class ModGui
+local ModGui = {}
+
 --- @param player LuaPlayer
 local function destroy_gui(player)
     if not global.sil_fc_gui then
@@ -38,7 +41,7 @@ local function onSwitchEnabled(event)
     local data = FiCo.locate_config(player_ui.unit)
     if not data then return end
 
-    data.config.enabled = event.element.switch_state == "right"
+    data.config.enabled = event.element.switch_state == 'right'
     data.cc.get_or_create_control_behavior().enabled = data.config.enabled
     data.ex.get_or_create_control_behavior().enabled = data.config.enabled
     data.main.active = data.config.enabled
@@ -60,7 +63,7 @@ local function onSwitchExclusive(event)
     local data = FiCo.locate_config(player_ui.unit)
     if not data then return end
 
-    data.config.exclusive = event.element.switch_state == "right"
+    data.config.exclusive = event.element.switch_state == 'right'
     FiCo.add_metatable(data.config):update_entity(data)
 end
 
@@ -132,24 +135,24 @@ local function make_grid_buttons(cc)
         local sig = behavior.get_signal(i)
         if (sig.signal) then
             table.insert(list,
-                         {
-                             type = 'choose-elem-button',
-                             tags = { idx = i },
-                             style = 'slot_button',
-                             elem_type = 'signal',
-                             signal = sig.signal,
-                             handler = { [defines.events.on_gui_elem_changed] = onSelectSignal },
-                         })
-        elseif empty_slot_count < Mod.settings:startup().empty_slots or #list % 10 ~= 0 then
+                {
+                    type = 'choose-elem-button',
+                    tags = { idx = i },
+                    style = 'slot_button',
+                    elem_type = 'signal',
+                    signal = sig.signal,
+                    handler = { [defines.events.on_gui_elem_changed] = onSelectSignal },
+                })
+        elseif empty_slot_count < This.settings:startup().empty_slots or #list % 10 ~= 0 then
             empty_slot_count = empty_slot_count + 1
             table.insert(list,
-                         {
-                             type = 'choose-elem-button',
-                             tags = { idx = i },
-                             style = 'slot_button',
-                             elem_type = 'signal',
-                             handler = { [defines.events.on_gui_elem_changed] = onSelectSignal }
-                         })
+                {
+                    type = 'choose-elem-button',
+                    tags = { idx = i },
+                    style = 'slot_button',
+                    elem_type = 'signal',
+                    handler = { [defines.events.on_gui_elem_changed] = onSelectSignal }
+                })
         end
     end
     return list
@@ -179,134 +182,134 @@ local function onGuiOpened(event)
     local slot_buttons = make_grid_buttons(data.cc)
     --- @type FrameworkGuiElemDef
     local ui = {
-        type = "frame",
-        name = "gui_root",
-        direction = "vertical",
+        type = 'frame',
+        name = 'gui_root',
+        direction = 'vertical',
         handler = { [defines.events.on_gui_closed] = onWindowClosed },
         elem_mods = { auto_center = true },
         children = {
             { -- Title Bar
-                type = "flow",
-                style = "framework_titlebar_flow",
-                drag_target = "gui_root",
+                type = 'flow',
+                style = 'framework_titlebar_flow',
+                drag_target = 'gui_root',
                 children = {
                     {
-                        type = "label",
-                        style = "frame_title",
+                        type = 'label',
+                        style = 'frame_title',
                         caption = { const.fc_entity_name },
-                        drag_target = "gui_root",
+                        drag_target = 'gui_root',
                         ignored_by_interaction = true,
                     },
                     {
-                        type = "empty-widget",
-                        style = "framework_titlebar_drag_handle",
+                        type = 'empty-widget',
+                        style = 'framework_titlebar_drag_handle',
                         ignored_by_interaction = true,
                     },
                     {
-                        type = "sprite-button",
-                        name = "sil_fc_close_button",
-                        style = "frame_action_button",
-                        sprite = "utility/close_white",
-                        hovered_sprite = "utility/close_black",
-                        clicked_sprite = "utility/close_black",
-                        mouse_button_filter = { "left" },
+                        type = 'sprite-button',
+                        name = 'sil_fc_close_button',
+                        style = 'frame_action_button',
+                        sprite = 'utility/close_white',
+                        hovered_sprite = 'utility/close_black',
+                        clicked_sprite = 'utility/close_black',
+                        mouse_button_filter = { 'left' },
                         handler = { [defines.events.on_gui_click] = onWindowClosed },
                     },
                 },
             }, -- Title Bar End
             {
-                type = "frame",
-                style = "inside_shallow_frame_with_padding",
-                name = "sil_fc_content",
-                direction = "vertical",
+                type = 'frame',
+                style = 'inside_shallow_frame_with_padding',
+                name = 'sil_fc_content',
+                direction = 'vertical',
                 children = {
                     {
-                        type = "flow",
-                        style = "framework_indicator_flow",
-                        name = "status_flow",
+                        type = 'flow',
+                        style = 'framework_indicator_flow',
+                        name = 'status_flow',
                         children = {
                             {
-                                type = "sprite",
-                                name = "lamp",
-                                style = "framework_indicator",
-                                sprite = data.config.enabled and "framework_indicator_green" or "framework_indicator_red",
+                                type = 'sprite',
+                                name = 'lamp',
+                                style = 'framework_indicator',
+                                sprite = data.config.enabled and 'framework_indicator_green' or 'framework_indicator_red',
                             },
                             {
-                                type = "label",
-                                style = "label",
-                                name = "status",
+                                type = 'label',
+                                style = 'label',
+                                name = 'status',
                                 caption = data.config.enabled and { 'entity-status.working' } or { 'entity-status.disabled' },
                             },
                             {
-                                type = "empty-widget",
-                                name = "spacer",
+                                type = 'empty-widget',
+                                name = 'spacer',
                                 style_mods = { horizontally_stretchable = true },
                             },
                             {
-                                type = "label",
+                                type = 'label',
                                 style = 'label',
                                 name = 'id',
-                                caption = "ID: " .. data.main.unit_number,
+                                caption = 'ID: ' .. data.main.unit_number,
                             },
                         },
                     },
                     { -- Add some spacing
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                     },
                     {
-                        type = "frame",
-                        style = "deep_frame_in_shallow_frame",
-                        name = "preview_frame",
+                        type = 'frame',
+                        style = 'deep_frame_in_shallow_frame',
+                        name = 'preview_frame',
                         children = {
                             {
-                                type = "entity-preview",
-                                name = "preview",
-                                style = "wide_entity_button",
+                                type = 'entity-preview',
+                                name = 'preview',
+                                style = 'wide_entity_button',
                                 elem_mods = { entity = data.main },
                             },
                         },
                     },
                     { -- Add some spacing
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                     },
                     {
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                         children = {
                             {
-                                type = "label",
-                                style = "heading_3_label",
+                                type = 'label',
+                                style = 'heading_3_label',
                                 caption = { 'gui-constant.output' },
                             },
                         },
                     },
                     {
-                        type = "switch",
-                        switch_state = data.config.enabled and "right" or "left",
+                        type = 'switch',
+                        switch_state = data.config.enabled and 'right' or 'left',
                         right_label_caption = { 'gui-constant.on' },
                         left_label_caption = { 'gui-constant.off' },
                         handler = { [defines.events.on_gui_switch_state_changed] = onSwitchEnabled },
                     },
                     { -- Add some spacing
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                     },
                     {
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                         children = {
                             {
-                                type = "label",
-                                style = "heading_3_label",
+                                type = 'label',
+                                style = 'heading_3_label',
                                 caption = { const:locale('mode-heading') },
                             },
                         },
                     },
                     {
-                        type = "switch",
-                        switch_state = data.config.exclusive and "right" or "left",
+                        type = 'switch',
+                        switch_state = data.config.exclusive and 'right' or 'left',
                         right_label_caption = { const:locale('mode-exclusive') },
                         right_label_tooltip = { const:locale('mode-exclusive-tooltip') },
                         left_label_caption = { const:locale('mode-inclusive') },
@@ -314,76 +317,76 @@ local function onGuiOpened(event)
                         handler = { [defines.events.on_gui_switch_state_changed] = onSwitchExclusive },
                     },
                     { -- Add some spacing
-                        type = "frame",
-                        style = "container_invisible_frame_with_title",
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
                     },
                     {
-                        type = "flow",
-                        name = "sil_fc_row2",
-                        direction = "horizontal",
+                        type = 'flow',
+                        name = 'sil_fc_row2',
+                        direction = 'horizontal',
                         children = {
                             {
-                                type = "checkbox",
+                                type = 'checkbox',
                                 caption = { const:locale('mode-wire') },
-                                name = "sil_fc_wire_content",
+                                name = 'sil_fc_wire_content',
                                 state = data.config.filter_input_from_wire,
                                 handler = { [defines.events.on_gui_checked_state_changed] = onToggleWireMode },
                             },
                             {
-                                type = "radiobutton",
+                                type = 'radiobutton',
                                 state = data.config.filter_input_wire == defines.wire_type.red,
                                 -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.red-wire' },
-                                name = "red_wire_indicator",
+                                name = 'red_wire_indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchWire },
                             },
                             {
-                                type = "radiobutton",
+                                type = 'radiobutton',
                                 state = data.config.filter_input_wire == defines.wire_type.green,
                                 -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.green-wire' },
-                                name = "green_wire_indicator",
+                                name = 'green_wire_indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchWire },
                             },
                         },
                     },
                     { -- Just so we can hide this entire block in one go
-                        type = "flow",
-                        direction = "vertical",
+                        type = 'flow',
+                        direction = 'vertical',
                         visible = not data.config.filter_input_from_wire,
-                        name = "item_grid",
+                        name = 'item_grid',
                         children = {
                             { -- Add some spacing
-                                type = "frame",
-                                style = "container_invisible_frame_with_title",
+                                type = 'frame',
+                                style = 'container_invisible_frame_with_title',
                             },
                             {
-                                type = "line",
+                                type = 'line',
                             },
                             {
-                                type = "frame",
-                                style = "container_invisible_frame_with_title",
+                                type = 'frame',
+                                style = 'container_invisible_frame_with_title',
                                 children = {
                                     {
-                                        type = "label",
-                                        style = "heading_3_label",
+                                        type = 'label',
+                                        style = 'heading_3_label',
                                         caption = { const:locale('signals-heading') },
                                     },
                                 },
                             },
                             {
-                                type = "scroll-pane",
-                                style = "constant_combinator_logistics_scroll_pane",
-                                name = "sil_fc_filter_section",
+                                type = 'scroll-pane',
+                                style = 'constant_combinator_logistics_scroll_pane',
+                                name = 'sil_fc_filter_section',
                                 children = {
                                     {
-                                        type = "frame",
-                                        style = "deep_frame_in_shallow_frame",
-                                        name = "frame",
+                                        type = 'frame',
+                                        style = 'deep_frame_in_shallow_frame',
+                                        name = 'frame',
                                         children = {
                                             {
-                                                type = "table",
-                                                name = "sil_fc_signal_container",
+                                                type = 'table',
+                                                name = 'sil_fc_signal_container',
                                                 style = 'sil_signal_table',
                                                 -- style = "compact_slot_table", -- Best vanilla match, still too wide a gap
                                                 -- style = "slot_table", -- No real difference to the compact one?
@@ -417,10 +420,6 @@ local function onGuiOpened(event)
     }
 end
 
----@class Gui
----@field init function
-return {
-    init = function()
-        Events.on_event(defines.events.on_gui_opened, onGuiOpened)
-    end,
-}
+Events.on_event(defines.events.on_gui_opened, onGuiOpened)
+
+return ModGui
