@@ -14,7 +14,7 @@ local This = {
   gui = nil,
 }
 
-This.other_mods = { 'nullius', 'framework' }
+This.other_mods = { 'nullius', 'framework', 'compaktcircuit', 'PickerDollies' }
 This.settings = Mod.settings:add_startup(require('scripts.settings-startup'))
 
 -- self.StaCo = require("scripts/staco/staco")
