@@ -7,6 +7,7 @@
 --------------------------------------------------------------------------------
 
 
+require('lib.init')
 local const = require('lib.constants')
 
 -- 20 is a fudge factor to account for some modules adding items in their final-fixes stage
@@ -21,3 +22,6 @@ for _, info in pairs(data.raw) do
 end
 
 data.raw['constant-combinator'][const.internal_cc_name].item_slot_count = count
+
+--------------------------------------------------------------------------------
+require('framework.other-mods').data_final_fixes()

@@ -25,20 +25,9 @@ recipe.name = const.filter_combinator_name
 recipe.result = const.filter_combinator_name
 recipe.order = item.order
 
-if mods['nullius'] then
-    recipe.name = const.filter_combinator_name
-    recipe.ingredients = { { 'copper-cable', 5 }, { 'decider-combinator', 2 } }
-    recipe.subgroup = 'logistics'
-    recipe.category = 'tiny-crafting'
-    recipe.order = 'nullius-fa'
-end
-
 data:extend { item, recipe }
 
 table.insert(data.raw['technology']['circuit-network'].effects, { type = 'unlock-recipe', recipe = recipe.name })
 
 --------------------------------------------------------------------------------
-
-if mods['nullius'] then
-    table.insert(data.raw['technology']['nullius-computation'].effects, { type = 'unlock-recipe', recipe = recipe.name })
-end
+require('framework.other-mods').data()

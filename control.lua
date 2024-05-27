@@ -1,7 +1,3 @@
--- Copyright 2023 Sil3ntStorm https://github.com/Sil3ntStorm
---
--- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
-
 local Events = require('__stdlib__.stdlib.event.event')
 
 require('lib.init')
@@ -118,3 +114,6 @@ end)
 Events.on_load(function()
     initCompat()
 end)
+
+--------------------------------------------------------------------------------
+require('framework.other-mods').runtime()
