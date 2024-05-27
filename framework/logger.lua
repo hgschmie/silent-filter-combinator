@@ -1,53 +1,80 @@
+local StdLibLogger = require('__stdlib__.stdlib.misc.logger')
+
 ----------------------------------------------------------------------------------------------------
+
+local dummy = function(...) end
+
+local default_logger = { log = log }
 
 --- Logging
 ---@class FrameworkLogger
----@field OUTPUT_FOLDER string
----@field MOD_TAG table|string
----@field output_file string?
-local Logger = {
-  --- Folder where runtime output logs are stored
-  OUTPUT_FOLDER = Mod.NAME .. "/logs",
+---@field debug_mode boolean If true, debug and debugf produce output lines
+---@field core_logger table<string, any> The logging target
+local FrameworkLogger = {
+    debug_mode = true,
+    core_logger = default_logger,
 
-  --- What to use as the identifier for the mod in console logs. Rich text & localisation supported.
-  MOD_TAG = { Mod.NAME },
-
-  --- File to write
-  output_file = nil
+    debug = dummy,
+    debugf = dummy,
+    flush = dummy,
 }
 
-----------------------------------------------------------------------------------------------------
-
---- Log a message.
--- During game runtime, logs to the game console & script log file
--- Otherwise, logs to the game log.
---- @param message string Message to send to the game log.
-function Logger:log(message)
-  log(message)
+function FrameworkLogger:log(message)
+    self.core_logger.log(message)
 end
 
---- Log a message using string.format.
--- During game runtime, logs to the game console & script log file
--- Otherwise, logs to the game log.
---- @param message string Message to send to the game log.
---- @param ... any additional arguments for string.format
-function Logger:logf(message, ...)
-   log(string.format(message, table.unpack({...})))
+function FrameworkLogger:logf(message, ...)
+    self.core_logger.log(message:format(table.unpack { ... }))
 end
 
---- Log a message only if debug mode is enabled in startup settings.
---- @param message string  Message to send to the game log.
-function Logger:debug(message)
-  if (Mod.settings:startup().debug_mode) then self:log(message) end
-end
-
---- Log a message only if debug mode is enabled in startup settings.
---- @param message string Message to send to the game log.
---- @param ... any additional arguments for string.format
-function Logger:debugf(message, ...)
-   if (Mod.settings:startup().debug_mode) then self:log(string.format(message, table.unpack({...}))) end
+if FrameworkLogger.debug_mode then
+    FrameworkLogger.debug = FrameworkLogger.log
+    FrameworkLogger.debugf = FrameworkLogger.logf
 end
 
 ----------------------------------------------------------------------------------------------------
 
-return Logger
+--- Brings up the actual file logging using the stdlib. This only works in runtime mode, otherwise logging
+--- just goes to the regular logfile/output.
+---
+--- writes a <module-name>/framework.log logfile by default
+function FrameworkLogger:init()
+    assert(script, 'Logger can only be initalized in runtime stage')
+
+    self.debug_mode = Mod.settings:startup().debug_mode
+    self.core_logger = StdLibLogger.new('framework', self.debug_mode, { force_append = true })
+
+    self.flush = function() self.core_logger.write() end
+
+    -- reset debug logging, turn back on if debug_mode is still set
+    self.debug = (self.debug_mode and self.log) or dummy
+    self.debugf = (self.debug_mode and self.logf) or dummy
+
+    self:log('================================================================================')
+    self:log('==')
+    self:logf("== Framework logfile for '%s' mod intialized (debug mode: %s)", Mod.NAME, tostring(self.debug_mode))
+    self:log('==')
+
+    local Event = require('__stdlib__.stdlib.event.event')
+
+    -- The runtime storage is only available from an event. Schedule logging (and loading) for RUN_ID and GAME_ID
+    -- in a tick event, then remove the event handler again.
+    self.info = function()
+        Mod.RUN_ID = Mod.runtime:get_run_id()
+        Mod.GAME_ID = Mod.runtime:get_game_id()
+        Mod.logger:logf('== Game ID: %d, Run ID: %d', Mod.GAME_ID, Mod.RUN_ID)
+        Mod.logger:log('================================================================================')
+        Mod.logger:flush()
+
+        Event.remove(defines.events.on_tick, self.info)
+        self.info = nil
+    end
+    Event.register(defines.events.on_tick, self.info)
+
+    -- flush the log every 60 seconds
+    Event.on_nth_tick(3600, function(ev)
+        self:flush()
+    end)
+end
+
+return FrameworkLogger

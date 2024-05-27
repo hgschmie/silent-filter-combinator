@@ -34,6 +34,8 @@ local loaded = {
 ---@return self FrameworkSettings
 function Settings:add_all(setting_type, definitions)
    table.merge(self.definitions[setting_type], definitions)
+
+   loaded[setting_type] = nil
    return self
 end
 --- Add setting definitions to the startup table
