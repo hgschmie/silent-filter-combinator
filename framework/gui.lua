@@ -6,7 +6,8 @@
 -- Represents a single, open gui
 ------------------------------------------------------------------------
 
-local Is = require('__stdlib__.stdlib.utils.is')
+local Is = require('__stdlib__/stdlib/utils/is')
+local table = require('__stdlib__/stdlib/utils/table')
 
 local FrameworkGui = {}
 
@@ -20,7 +21,6 @@ function FrameworkGui:generate_name()
    return tostring(count)
 end
 
-
 --- Adds the internal prefix to the given name unless it is already prefixed.
 --- @param name string
 --- @return string prefixed name
@@ -31,7 +31,6 @@ function FrameworkGui:generate_gui_name(name)
       return self.prefix .. name
    end
 end
-
 
 --- Registers all defined handlers after a LuaGuiElement has been created.
 ---@param gui_element LuaGuiElement
@@ -46,8 +45,8 @@ function FrameworkGui:register_handlers(gui_element, extras)
 
    for event, handler in pairs(handlers) do
       local event_table = self.event_handlers[event]
-      assert(event_table, "Handler for event " .. tostring(event) .. " is not supported!")
-      assert(not event_table[handler_name], "Already registered a handler for " .. handler_name)
+      assert(event_table, 'Handler for event ' .. tostring(event) .. ' is not supported!')
+      assert(not event_table[handler_name], 'Already registered a handler for ' .. handler_name)
       event_table[handler_name] = handler --[[@as GuiElemHandler]]
    end
 end
@@ -55,11 +54,11 @@ end
 ------------------------------------------------------------------------
 
 local extra_fields = {
-   'children',      -- gui elements attached as children to this element
-   'elem_mods',     -- set of attributes that should be set on the created LuaGuiElement
-   'style_mods',    -- set of attributes that should be set on the LuaStyle field of the LuaGuiElement
-   'handler',       -- event handlers for this element
-   'drag_target',   -- drag target reference (must be another Gui element) when dragging an element
+   'children',    -- gui elements attached as children to this element
+   'elem_mods',   -- set of attributes that should be set on the created LuaGuiElement
+   'style_mods',  -- set of attributes that should be set on the LuaStyle field of the LuaGuiElement
+   'handler',     -- event handlers for this element
+   'drag_target', -- drag target reference (must be another Gui element) when dragging an element
 }
 
 --- Creates a new LuaGuiElement from a Framework element definition. Any defined children will recursively created and attached.
@@ -67,7 +66,6 @@ local extra_fields = {
 --- @param child FrameworkGuiElemDef A gui element definition. May have additional children.
 --- @return LuaGuiElement gui_element The new gui element
 function FrameworkGui:create_child_element(parent, child)
-
    ---@type FrameworkGuiElementExtras
    local extras = {}
 
@@ -141,14 +139,14 @@ end
 --- @param children FrameworkGuiElemDef|FrameworkGuiElemDef[] The element definition, or an array of element definitions.
 --- @param existing_elements table<string, LuaGuiElement>? Optional set of existing GUI elements.
 function FrameworkGui:add_child_elements(parent, children, existing_elements)
-   assert(Is.Valid(parent), "Parent element is missing or invalid")
-   assert(children, "new_elements can not be empty")
+   assert(Is.Valid(parent), 'Parent element is missing or invalid')
+   assert(children, 'new_elements can not be empty')
 
    if existing_elements then
       -- validate and move existing elements into the internal ui_elements array
-      for _, element in existing_elements do
+      for _, element in pairs(existing_elements) do
          assert(Is.Valid(element))
-         assert(element.name, "Can not add an external element without name: " .. serpent.line(element))
+         assert(element.name, 'Can not add an external element without name: ' .. serpent.line(element))
          local gui_name = self:generate_gui_name(element.name)
 
          assert(not self.ui_elements[gui_name], "A UI element named '" .. gui_name .. "' was already defined!")
@@ -170,12 +168,12 @@ function FrameworkGui:add_child_elements(parent, children, existing_elements)
       elseif child.tab and child.content then
          gui_element = self:add_tab(parent, child)
       else
-         assert(false, "Invalid element: " .. serpent(child))
+         assert(false, 'Invalid element: ' .. serpent(child))
       end
       root = root or gui_element
    end
 
-   self.root = root
+   return root
 end
 
 ------------------------------------------------------------------------
@@ -185,7 +183,6 @@ end
 --- @param prefix string The internal prefix for all elements in this gui
 --- @return FrameworkGui gui A FrameworkGui instance that can be used for creating a Gui.
 function FrameworkGui.create(gui_id, prefix)
-
    --- @class FrameworkGui
    --- @field id number The gui id for this instance
    --- @field prefix string The internal prefix for all names.
@@ -205,12 +202,12 @@ function FrameworkGui.create(gui_id, prefix)
 
    -- predefine arrays for all supported events
    for name, id in pairs(defines.events) do
-      if name:sub(1, 7) == "on_gui_" then
+      if name:sub(1, 7) == 'on_gui_' then
          gui.event_handlers[id] = {}
       end
    end
 
-   setmetatable(gui, { __index = FrameworkGui})
+   setmetatable(gui, { __index = FrameworkGui })
    return gui
 end
 
@@ -220,6 +217,36 @@ end
 function FrameworkGui:find_element(name)
    local ui_name = self:generate_gui_name(name)
    return self.ui_elements[ui_name]
+end
+
+------------------------------------------------------------------------
+
+--- Removes all children from an UI element
+--- @param name string The name of the UI element
+--- @return LuaGuiElement? ui_element The GUI element without children or nil.
+function FrameworkGui:remove_children(name)
+   local ui_element = self:find_element(name)
+
+   if ui_element then
+      local child_names = ui_element.children_names
+      ui_element.clear()
+      table.remove_keys(self.ui_elements, child_names)
+   end
+
+   return ui_element
+end
+
+--- Replace the children of an UI element with a new set of children.
+--- @param name string The name of the UI element.
+--- @param children FrameworkGuiElemDef|FrameworkGuiElemDef[]
+--- @return LuaGuiElement? ui_element The GUI element with new children or nil.
+function FrameworkGui:replace_children(name, children)
+   local parent = self:remove_children(name)
+   if parent then
+      self:add_child_elements(parent, children)
+   end
+
+   return parent
 end
 
 ------------------------------------------------------------------------
@@ -246,7 +273,6 @@ function FrameworkGui:dispatch(ev)
    handlers[elem.name](ev)
    return true
 end
-
 
 --- @class FrameworkGuiElementExtras
 --- @field style_mods table<string, any>? Post-creation modifications to make to the element's style.

@@ -11,6 +11,7 @@ const.name = 'filter-combinator'
 const.root = '__filter-combinator-improved__'
 const.gfx_location = const.root .. '/graphics/'
 
+---@return FrameworkModConfig config
 function const:mod_init()
    return {
       -- prefix is the internal mod prefix

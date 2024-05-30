@@ -6,15 +6,13 @@
 
 local const = require('lib.constants')
 
-local FiCo = require('scripts.filter_combinator')
-
 local CompaktCircuitSupport = {}
 
 --------------------------------------------------------------------------------
 
 ---@param entity LuaEntity
 local function ccs_get_info(entity)
-    local data = FiCo.locate_config(entity)
+    local data = This.fico.locate_config(entity)
     if not data then return end
 
     local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
@@ -31,8 +29,8 @@ local function ccs_create_packed_entity(info, surface, position, force)
     local ent = surface.create_entity { name = const.filter_combinator_name_packed, position = position, force = force, direction = info.direction, raise_built = false }
 
     if ent then
-        local data = FiCo.create_entity(ent)
-        data.config = FiCo.add_metatable(info.cc_config)
+        local data = This.fico.create_entity(ent)
+        data.config = This.fico.add_metatable(info.cc_config)
 
         local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
         behavior.parameters = info.cc_params
@@ -48,8 +46,8 @@ end
 local function ccs_create_entity(info, surface, force)
     local ent = surface.create_entity { name = const.filter_combinator_name, position = info.position, force = force, direction = info.direction, raise_built = false }
     if ent then
-        local data = FiCo.create_entity(ent)
-        data.config = FiCo.add_metatable(info.cc_config)
+        local data = This.fico.create_entity(ent)
+        data.config = This.fico.add_metatable(info.cc_config)
 
         local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
         behavior.parameters = info.cc_params
@@ -81,7 +79,7 @@ end
 --------------------------------------------------------------------------------
 
 CompaktCircuitSupport.runtime = function()
-    local Event = require('__stdlib__.stdlib.event.event')
+    local Event = require('__stdlib__/stdlib/event/event')
 
     Event.on_init(ccs_init)
     Event.on_load(ccs_init)

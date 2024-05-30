@@ -2,8 +2,8 @@
 -- Manage GUIs and GUI state
 --
 
-local Events = require('__stdlib__.stdlib.event.event')
-local Is = require('__stdlib__.stdlib.utils.is')
+local Event = require('__stdlib__/stdlib/event/event')
+local Is = require('__stdlib__/stdlib/utils/is')
 
 local FrameworkGui = require('framework.gui')
 
@@ -84,17 +84,19 @@ end
 
 --- Creates a new GUI instance.
 --- @param parent LuaGuiElement
---- @param children FrameworkGuiElemDef|FrameworkGuiElemDef[] The element definition, or an array of element definitions.
+--- @param ui_tree FrameworkGuiElemDef|FrameworkGuiElemDef[] The element definition, or an array of element definitions.
 --- @param existing_elements table<string, LuaGuiElement>? Optional set of existing GUI elements.
 --- @return FrameworkGui framework_gui A framework gui instance
-function FrameworkGuiManager:create_gui(parent, children, existing_elements)
+function FrameworkGuiManager:create_gui(parent, ui_tree, existing_elements)
+    assert(Is.Table(ui_tree) and #ui_tree == 0, "The UI tree must have a single root!")
     local gui_id = self:create_id()
     local gui = FrameworkGui.create(gui_id, self.prefix)
     local state = self:state()
 
     state.guis[gui_id] = gui
 
-    gui:add_child_elements(parent, children, existing_elements)
+    local root = gui:add_child_elements(parent, ui_tree, existing_elements)
+    gui.root = root
 
     return gui
 end
@@ -104,16 +106,19 @@ end
 --- Destroys a GUI instance.
 --- @param gui (FrameworkGui|number)? The gui to destroy
 function FrameworkGuiManager:destroy_gui(gui)
-    if not gui then return end
     if Is.Number(gui) then
         gui = self:find_gui(gui --[[@as number?]]) --[[@as FrameworkGui?]]
-        if not gui then return end
     end
+
+    if not gui then return end
+
     local state = self:state()
 
     local gui_id = gui.id
     state.guis[gui_id] = nil
-    gui.root.destroy()
+    if gui.root then
+        gui.root.destroy()
+    end
 end
 
 ------------------------------------------------------------------------
@@ -121,7 +126,7 @@ end
 -- register all gui events with the framework
 for name, id in pairs(defines.events) do
     if name:sub(1, 7) == 'on_gui_' then
-        Events.on_event(id, function(ev)
+        Event.on_event(id, function(ev)
             FrameworkGuiManager:dispatch(ev)
         end)
     end

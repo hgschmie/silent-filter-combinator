@@ -1,8 +1,8 @@
-local Event = require('__stdlib__.stdlib.event.event')
-
 require('lib.init')
+require('__stdlib__/stdlib/event/player').register_events(true)
+local Event = require('__stdlib__/stdlib/event/event')
 
-require('scripts.event-setup'):init()
+require('scripts.event-setup')
 
 Event.on_init(function()
     if not global.sil_filter_combinators then

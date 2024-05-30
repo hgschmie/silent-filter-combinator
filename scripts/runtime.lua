@@ -1,4 +1,4 @@
-local Events = require('__stdlib__.stdlib.event.event')
+local Event = require('__stdlib__/stdlib/event/event')
 
 ----------------------------------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ local Runtime = {
 
 
 
-Events.on_load(function()
+Event.on_load(function()
     -- self:rebuild_update_queue()
 end)
 

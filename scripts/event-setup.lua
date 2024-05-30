@@ -1,29 +1,21 @@
-local events = require('__stdlib__.stdlib.event.event')
-
-local const = require('lib.constants')
-local FiCo = require('scripts.filter_combinator')
-
 --------------------------------------------------------------------------------
 -- Module event setup
 --------------------------------------------------------------------------------
 
----@class ModEvents
-local ModEvents = {
+local Event = require('__stdlib__/stdlib/event/event')
+local Is = require('__stdlib__/stdlib/utils/is')
 
-}
+local const = require('lib.constants')
+
+--------------------------------------------------------------------------------
 
 --- @param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive
 local function onEntityCreated(event)
-    local entity = event.created_entity or event.entity
-
-    FiCo.create_entity(entity, event.tags)
+    This.fico:create(event.created_entity)
 end
 
 local function onEntityDeleted(event)
-    if (not (event.entity and event.entity.valid)) then
-        return
-    end
-    FiCo.delete_entity(event.entity)
+    This.fico:destroy(event.entity.unit_number)
 end
 
 --- @param event EventData.on_entity_cloned
@@ -62,7 +54,7 @@ local function onEntitySettingsPasted(event)
     end
 end
 
---#region Blueprint and copy / paste support
+--------------------------------------------------------------------------------
 
 --- @param bp LuaItemStack
 local function save_to_blueprint(data, bp)
@@ -141,67 +133,76 @@ local function onPlayerConfiguredBlueprint(event)
     end
 end
 
---#endregion
-
+--------------------------------------------------------------------------------
 
 --- @param changed ConfigurationChangedData
 local function onConfigurationChanged(changed)
-    global.sil_fc_slot_error_logged = false
-    log('Updating for potentially changed signals...')
-    for _, data in pairs(global.sil_fc_data) do
-        if data and data.ex and data.ex.valid then
-            FiCo.set_all_signals(data.ex)
-        end
-    end
+    -- TODO - rebuild all ex constant combinators slot info.
+
+    -- global.sil_fc_slot_error_logged = false
+    -- log('Updating for potentially changed signals...')
+    -- for _, data in pairs(global.sil_fc_data) do
+    --     if data and data.ex and data.ex.valid then
+    --         FiCo.set_all_signals(data.ex)
+    --     end
+    -- end
 end
+
+--------------------------------------------------------------------------------
 
 local function onNthTick(event)
-    if global.sil_fc_count <= 0 then return end
-    for idx, data in pairs(global.sil_fc_data) do
-        if not data.main.valid then
+    if This.fico:totalCount() <= 0 then return end
+    for main_unit_number, fc_entity in pairs(This.fico:entities()) do
+        if not Is.Valid(fc_entity.main) then
             -- most likely cc has removed the main entity
-            local ids = data.ids
-            for id, entity in pairs(ids) do
-                assert(not global.sil_filter_combinators[id] or global.sil_filter_combinators[id] == idx)
-                entity.destroy()
-                global.sil_filter_combinators[id] = nil
-            end
-            FiCo.add_metatable(data.config):remove_data(idx)
+            This.fico:destroy(main_unit_number)
+        else
+            This.fico:update_entity(fc_entity)
         end
     end
 end
 
+--------------------------------------------------------------------------------
 
-function ModEvents:init()
-    events.on_nth_tick(301, onNthTick)
+Event.on_nth_tick(301, onNthTick)
 
-    events.register({ defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died }, onEntityDeleted)
-    events.register({ defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive }, onEntityCreated)
-    events.register(defines.events.on_entity_cloned, onEntityCloned)
-    events.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted)
+local create_names = { [const.filter_combinator_name] = true , [const.filter_combinator_name_packed] = true }
+local function match_main_entity(ev, pattern)
+    local entity = ev.created_entity
+    return create_names[entity.name]
+end
 
-    events.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
-    events.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
+-- loop works around https://github.com/Afforess/Factorio-Stdlib/pull/164
+for _, event in pairs { defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive } do
+    Event.register(event, onEntityCreated, match_main_entity)
+end
 
-    events.on_configuration_changed(onConfigurationChanged)
+for _, event in pairs { defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died } do
+    Event.register(event, onEntityDeleted)
+end
 
-    -- events.register(defines.events.on_tick, run)
-    -- events.register(defines.events.on_player_cursor_stack_changed, ensure_internal_connections)
-    -- -- Config change
-    -- events.register(defines.events.on_runtime_mod_setting_changed, cfg_update)
-    -- -- Creation
-    -- events.register(defines.events.on_entity_cloned, create, event_filter, "destination")
-    -- events.register(defines.events.script_raised_built, create, event_filter)
-    -- events.register(defines.events.script_raised_revive, create, event_filter)
-    -- -- Rotation & settings pasting
-    -- events.register(defines.events.on_player_rotated_entity, rotate, event_filter)
-    -- -- Removal
-    -- events.register(defines.events.on_robot_mined_entity, remove, event_filter)
-    -- events.register(defines.events.script_raised_destroy, remove, event_filter)
-    -- -- Batch removal
-    -- events.register(defines.events.on_chunk_deleted, purge)
-    -- events.register(defines.events.on_surface_cleared, purge)
-    -- events.register(defines.events.on_surface_deleted, purge)
-  end
+Event.register(defines.events.on_entity_cloned, onEntityCloned)
+Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted)
 
-return ModEvents
+Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
+Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
+
+Event.on_configuration_changed(onConfigurationChanged)
+
+-- events.register(defines.events.on_tick, run)
+-- events.register(defines.events.on_player_cursor_stack_changed, ensure_internal_connections)
+-- -- Config change
+-- events.register(defines.events.on_runtime_mod_setting_changed, cfg_update)
+-- -- Creation
+-- events.register(defines.events.on_entity_cloned, create, event_filter, "destination")
+-- events.register(defines.events.script_raised_built, create, event_filter)
+-- events.register(defines.events.script_raised_revive, create, event_filter)
+-- -- Rotation & settings pasting
+-- events.register(defines.events.on_player_rotated_entity, rotate, event_filter)
+-- -- Removal
+-- events.register(defines.events.on_robot_mined_entity, remove, event_filter)
+-- events.register(defines.events.script_raised_destroy, remove, event_filter)
+-- -- Batch removal
+-- events.register(defines.events.on_chunk_deleted, purge)
+-- events.register(defines.events.on_surface_cleared, purge)
+-- events.register(defines.events.on_surface_deleted, purge)

@@ -1,4 +1,4 @@
-local Is = require('__stdlib__.stdlib.utils.is')
+local Is = require('__stdlib__/stdlib/utils/is')
 
 ----------------------------------------------------------------------------------------------------
 

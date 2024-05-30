@@ -1,207 +1,42 @@
-local Events = require('__stdlib__.stdlib.event.event')
-local Is = require('__stdlib__.stdlib.utils.is')
+local Event = require('__stdlib__/stdlib/event/event')
+local Player = require('__stdlib__/stdlib/event/player')
+local table = require('__stdlib__/stdlib/utils/table')
 
 local const = require('lib.constants')
-
---- @type FilterCombinatorConfig
-local FiCo = require('scripts.filter_combinator')
 
 --- @class ModGui
 local ModGui = {}
 
-----------------------------------------------------------------------------------------------------
+ModGui.STATUS_SPRITES = {}
+ModGui.STATUS_NAMES = {}
 
---- @param player LuaPlayer
-local function destroy_gui(player)
-    if not global.sil_fc_gui then
-        global.sil_fc_gui = {}
-    end
-    local player_ui = global.sil_fc_gui[player.index] --[[@as FrameworkGui ]]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
+--- Status sprite names
+local RED = 'utility/status_not_working'
+local GREEN = 'utility/status_working'
+local YELLOW = 'utility/status_yellow'
 
-    if not Is.Valid(player_ui.ui.root) then return end
+ModGui.STATUS_SPRITES[defines.entity_status.working] = GREEN
+ModGui.STATUS_SPRITES[defines.entity_status.normal] = GREEN
+ModGui.STATUS_SPRITES[defines.entity_status.no_power] = RED
+ModGui.STATUS_SPRITES[defines.entity_status.low_power] = YELLOW
+ModGui.STATUS_SPRITES[defines.entity_status.disabled_by_control_behavior] = RED
+ModGui.STATUS_SPRITES[defines.entity_status.disabled_by_script] = RED
+ModGui.STATUS_SPRITES[defines.entity_status.marked_for_deconstruction] = RED
+ModGui.STATUS_SPRITES[defines.entity_status.disabled] = RED
 
-    if player.opened == player_ui.ui.root then
-        player.opened = nil
-    end
-
-    Mod.gui_manager:destroy_gui(player_ui.ui)
+for name, idx in pairs(defines.entity_status) do
+    ModGui.STATUS_NAMES[idx] = 'entity-status.' .. string.gsub(name, '_', '-')
 end
 
 ----------------------------------------------------------------------------------------------------
 
---- close the UI (button or shortcut key)
----
---- @param event EventData.on_gui_click
-local function onWindowClosed(event)
-    destroy_gui(game.players[event.player_index])
-end
+-- callback predefines
+local onWindowClosed, onSwitchEnabled, onSwitchExclusive, onToggleWireMode, onSwitchRedWire, onSwitchGreenWire
 
---- Enable / Disable switch
----
---- @param event EventData.on_gui_switch_state_changed
-local function onSwitchEnabled(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    data.config.enabled = event.element.switch_state == 'right'
-    data.cc.get_or_create_control_behavior().enabled = data.config.enabled
-    data.ex.get_or_create_control_behavior().enabled = data.config.enabled
-    data.main.active = data.config.enabled
-
-    local ui_status = player_ui.ui:find_element('status')
-    local ui_lamp = player_ui.ui:find_element('lamp')
-
-    ui_status.caption = data.config.enabled and { 'entity-status.working' } or { 'entity-status.disabled' }
-    ui_lamp.sprite = data.config.enabled and 'framework_indicator_green' or 'framework_indicator_red'
-
-    FiCo.add_metatable(data.config):update_entity(data)
-end
-
-----------------------------------------------------------------------------------------------------
-
---- inclusive/exclusive switch
----
---- @param event EventData.on_gui_switch_state_changed
-local function onSwitchExclusive(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    data.config.exclusive = event.element.switch_state == 'right'
-    FiCo.add_metatable(data.config):update_entity(data)
-end
-
---- switch green wire
---- @param event EventData.on_gui_checked_state_changed
-local function onSwitchGreenWire(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    data.config.filter_input_wire = defines.wire_type.green
-
-    local red_wire = player_ui.ui:find_element('red_wire_indicator')
-    red_wire.state = not event.element.state
-FiCo.add_metatable(data.config):update_entity(data)
-end
-
---- switch red wire
---- @param event EventData.on_gui_checked_state_changed
-local function onSwitchRedWire(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    data.config.filter_input_wire = defines.wire_type.red
-
-    local green_wire = player_ui.ui:find_element('green_wire_indicator')
-    green_wire.state = not event.element.state
-
-    FiCo.add_metatable(data.config):update_entity(data)
-end
-
-
---- @param event  EventData.on_gui_checked_state_changed
-local function onToggleWireMode(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    -- ui.ui.sil_fc_content.sil_fc_row2.sil_fc_red_wire.enabled = event.element.state
-    -- ui.ui.sil_fc_content.sil_fc_row2.sil_fc_green_wire.enabled = event.element.state
-
-    data.config.filter_input_from_wire = event.element.state
-    local item_grid = player_ui.ui:find_element('item_grid')
-    item_grid.visible = not event.element.state
-
-    FiCo.add_metatable(data.config):update_entity(data)
-end
-
---- @param event EventData.on_gui_elem_changed
-local function onSelectSignal(event)
-    local player_ui = global.sil_fc_gui[event.player_index]
-    if not (player_ui and player_ui.ui and player_ui.unit) then return end
-
-    local data = FiCo.locate_config(player_ui.unit)
-    if not data then return end
-
-    if not event.element.tags then return end
-
-    local signal = event.element.elem_value
-    local slot = event.element.tags.idx --[[@as number]]
-    local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-    behavior.set_signal(slot, signal and { signal = signal, count = 1 } or nil)
-end
-
---- @param cc LuaEntity
-local function make_grid_buttons(cc)
-    local behavior = cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-    local list = {}
-    local empty_slot_count = 0
-    -- For some reason it always is a table as big as the max signals supported... kinda unexpected but it works out I guess
-    for i = 1, behavior.signals_count do
-        local sig = behavior.get_signal(i)
-        if (sig.signal) then
-            table.insert(list,
-                {
-                    type = 'choose-elem-button',
-                    tags = { idx = i },
-                    style = 'slot_button',
-                    elem_type = 'signal',
-                    signal = sig.signal,
-                    handler = { [defines.events.on_gui_elem_changed] = onSelectSignal },
-                })
-        elseif empty_slot_count < This.settings:startup().empty_slots or #list % 10 ~= 0 then
-            empty_slot_count = empty_slot_count + 1
-            table.insert(list,
-                {
-                    type = 'choose-elem-button',
-                    tags = { idx = i },
-                    style = 'slot_button',
-                    elem_type = 'signal',
-                    handler = { [defines.events.on_gui_elem_changed] = onSelectSignal }
-                })
-        end
-    end
-    return list
-end
-
-
---- @param event EventData.on_gui_opened
-local function onGuiOpened(event)
-    if not (Is.Valid(event.entity) and event.entity.name == const.filter_combinator_name) then return end
-
-    local data = FiCo.locate_config(event.entity)
-    local player = game.players[event.player_index]
-    if not data then
-        log('Data missing for ' ..
-            event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
-        player.opened = nil
-        return
-    end
-
-    destroy_gui(player)
-
-    if not (data.cc and data.cc.valid) then
-        player.opened = nil
-        return
-    end
-
-    local slot_buttons = make_grid_buttons(data.cc)
-    --- @type FrameworkGuiElemDef
-    local ui = {
+--- @param fc_entity FilterCombinatorData
+--- @return FrameworkGuiElemDef ui
+local function get_ui(fc_entity)
+    return {
         type = 'frame',
         name = 'gui_root',
         direction = 'vertical',
@@ -227,7 +62,6 @@ local function onGuiOpened(event)
                     },
                     {
                         type = 'sprite-button',
-                        name = 'sil_fc_close_button',
                         style = 'frame_action_button',
                         sprite = 'utility/close_white',
                         hovered_sprite = 'utility/close_black',
@@ -240,25 +74,21 @@ local function onGuiOpened(event)
             {
                 type = 'frame',
                 style = 'inside_shallow_frame_with_padding',
-                name = 'sil_fc_content',
                 direction = 'vertical',
                 children = {
                     {
                         type = 'flow',
                         style = 'framework_indicator_flow',
-                        name = 'status_flow',
                         children = {
                             {
                                 type = 'sprite',
                                 name = 'lamp',
                                 style = 'framework_indicator',
-                                sprite = data.config.enabled and 'framework_indicator_green' or 'framework_indicator_red',
                             },
                             {
                                 type = 'label',
                                 style = 'label',
                                 name = 'status',
-                                caption = data.config.enabled and { 'entity-status.working' } or { 'entity-status.disabled' },
                             },
                             {
                                 type = 'empty-widget',
@@ -268,8 +98,7 @@ local function onGuiOpened(event)
                             {
                                 type = 'label',
                                 style = 'label',
-                                name = 'id',
-                                caption = 'ID: ' .. data.main.unit_number,
+                                caption = 'ID: ' .. fc_entity.main.unit_number,
                             },
                         },
                     },
@@ -286,7 +115,7 @@ local function onGuiOpened(event)
                                 type = 'entity-preview',
                                 name = 'preview',
                                 style = 'wide_entity_button',
-                                elem_mods = { entity = data.main },
+                                elem_mods = { entity = fc_entity.main },
                             },
                         },
                     },
@@ -307,7 +136,7 @@ local function onGuiOpened(event)
                     },
                     {
                         type = 'switch',
-                        switch_state = data.config.enabled and 'right' or 'left',
+                        name = 'on-off',
                         right_label_caption = { 'gui-constant.on' },
                         left_label_caption = { 'gui-constant.off' },
                         handler = { [defines.events.on_gui_switch_state_changed] = onSwitchEnabled },
@@ -329,7 +158,7 @@ local function onGuiOpened(event)
                     },
                     {
                         type = 'switch',
-                        switch_state = data.config.exclusive and 'right' or 'left',
+                        name = 'incl-excl',
                         right_label_caption = { const:locale('mode-exclusive') },
                         right_label_tooltip = { const:locale('mode-exclusive-tooltip') },
                         left_label_caption = { const:locale('mode-inclusive') },
@@ -342,38 +171,34 @@ local function onGuiOpened(event)
                     },
                     {
                         type = 'flow',
-                        name = 'sil_fc_row2',
                         direction = 'horizontal',
                         children = {
                             {
                                 type = 'checkbox',
                                 caption = { const:locale('mode-wire') },
-                                name = 'sil_fc_wire_content',
-                                state = data.config.filter_input_from_wire,
+                                name = 'mode-wire',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onToggleWireMode },
+                                state = false,
                             },
                             {
                                 type = 'radiobutton',
-                                state = data.config.filter_input_wire == defines.wire_type.red,
-                                -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.red-wire' },
                                 name = 'red_wire_indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchRedWire },
+                                state = false,
                             },
                             {
                                 type = 'radiobutton',
-                                state = data.config.filter_input_wire == defines.wire_type.green,
-                                -- enabled = data.config.filter_input_from_wire,
                                 caption = { 'item-name.green-wire' },
                                 name = 'green_wire_indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchGreenWire },
+                                state = false,
                             },
                         },
                     },
-                    { -- Just so we can hide this entire block in one go
+                    {
                         type = 'flow',
                         direction = 'vertical',
-                        visible = not data.config.filter_input_from_wire,
                         name = 'item_grid',
                         children = {
                             { -- Add some spacing
@@ -397,26 +222,16 @@ local function onGuiOpened(event)
                             {
                                 type = 'scroll-pane',
                                 style = 'constant_combinator_logistics_scroll_pane',
-                                name = 'sil_fc_filter_section',
                                 children = {
                                     {
                                         type = 'frame',
                                         style = 'deep_frame_in_shallow_frame',
-                                        name = 'frame',
                                         children = {
                                             {
                                                 type = 'table',
-                                                name = 'sil_fc_signal_container',
-                                                style = 'sil_signal_table',
-                                                -- style = "compact_slot_table", -- Best vanilla match, still too wide a gap
-                                                -- style = "slot_table", -- No real difference to the compact one?
-                                                -- style = "filter_slot_table", -- Correct but has light background instead of dark
-                                                -- style = "logistics_slot_table", -- Same as above
-                                                -- style = "filter_group_table", -- Kinda weird with dark in between some but not all?
-                                                -- style = "inset_frame_container_table", -- Massive gaps
-                                                -- style = "logistic_gui_table", -- even worse gaps. No idea where this is ever used
+                                                name = 'signals',
+                                                style = 'slot_table',
                                                 column_count = 10,
-                                                children = slot_buttons,
                                             },
                                         },
                                     },
@@ -428,18 +243,270 @@ local function onGuiOpened(event)
             },
         },
     }
+end
 
-    if not global.sil_fc_gui then
-        global.sil_fc_gui = {}
+----------------------------------------------------------------------------------------------------
+-- UI Callbacks
+----------------------------------------------------------------------------------------------------
+
+local gui_updater
+
+--- close the UI (button or shortcut key)
+---
+--- @param event EventData.on_gui_click|EventData.on_gui_opened
+onWindowClosed = function(event)
+    local player, player_data = Player.get(event.player_index)
+
+    local fc_gui = player_data.fc_gui
+
+    if (fc_gui) then
+        if player.opened == player_data.fc_gui.gui.root then
+            player.opened = nil
+        end
+
+        Event.remove(-1, gui_updater, nil, fc_gui)
+        player_data.fc_gui = nil
+
+        if fc_gui.gui then
+            Mod.gui_manager:destroy_gui(fc_gui.gui)
+        end
     end
-    local gui = Mod.gui_manager:create_gui(player.gui.screen, ui)
-    player.opened = gui.root
-    global.sil_fc_gui[event.player_index] = {
-        ui = gui,
-        unit = event.entity.unit_number,
+end
+
+----------------------------------------------------------------------------------------------------
+
+local update_gui_state -- forward declaration
+
+---@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
+---@return FilterCombinatorData? fc_entity
+local function locate_config(event)
+    local player, player_data = Player.get(event.player_index)
+    if not (player_data and player_data.fc_gui) then return nil end
+
+    local fc_entity = This.fico:entity(player_data.fc_gui.fc_id)
+    if not fc_entity then return nil end
+
+    return fc_entity
+end
+
+local on_off_values = {
+    left = false,
+    right = true,
+}
+
+local values_on_off = table.invert(on_off_values)
+
+--- Enable / Disable switch
+---
+--- @param event EventData.on_gui_switch_state_changed
+onSwitchEnabled = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    fc_entity.config.enabled = on_off_values[event.element.switch_state]
+
+    -- data.cc.get_or_create_control_behavior().enabled = data.config.enabled
+    -- data.ex.get_or_create_control_behavior().enabled = data.config.enabled
+    -- data.main.active = data.config.enabled
+end
+
+----------------------------------------------------------------------------------------------------
+
+local incl_excl_values = {
+    left = true,
+    right = false,
+}
+
+local values_incl_excl = table.invert(incl_excl_values)
+
+--- inclusive/exclusive switch
+---
+--- @param event EventData.on_gui_switch_state_changed
+onSwitchExclusive = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    fc_entity.config.include_mode = incl_excl_values[event.element.switch_state]
+end
+
+--- switch green wire
+--- @param event EventData.on_gui_checked_state_changed
+onSwitchGreenWire = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    fc_entity.config.filter_wire = defines.wire_type.green
+end
+
+--- switch red wire
+--- @param event EventData.on_gui_checked_state_changed
+onSwitchRedWire = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    fc_entity.config.filter_wire = defines.wire_type.red
+end
+
+
+--- @param event  EventData.on_gui_checked_state_changed
+onToggleWireMode = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    fc_entity.config.use_wire = event.element.state
+end
+
+--- @param event EventData.on_gui_elem_changed
+onSelectSignal = function(event)
+    local fc_entity = locate_config(event)
+    if not fc_entity then return end
+
+    if not event.element.tags then return end
+
+    local signal = event.element.elem_value --[[@as SignalID]]
+    local slot = event.element.tags.idx --[[@as number]]
+    fc_entity.config.signals[slot] = {
+        signal = signal,
+        count = 1,
+        index = slot
     }
 end
 
-Events.on_event(defines.events.on_gui_opened, onGuiOpened)
+----------------------------------------------------------------------------------------------------
+
+---@param fc_entity FilterCombinatorData
+---@return FrameworkGuiElemDef[] gui_elements
+local function make_grid_buttons(fc_entity)
+    local signals = fc_entity.config.signals
+    local _, all_signals_count = This.fico:getAllSignalsConstantCombinator(fc_entity)
+    local list = {}
+    local empty_slot_count = 0
+
+    -- round to next 10 signals to make nice lines.
+    local row_count = math.floor(all_signals_count / 10)
+
+    for i = 0, row_count do
+        local has_signals = false
+        for j = 1, 10 do
+            local idx = i * 10 + j
+            local entry = {
+                type = 'choose-elem-button',
+                tags = { idx = idx },
+                style = 'slot_button',
+                elem_type = 'signal',
+                handler = { [defines.events.on_gui_elem_changed] = onSelectSignal },
+            }
+            entry.signal = (signals[idx] and signals[idx].signal) or nil
+            has_signals = (entry.signal and true or false) or has_signals
+            table.insert(list, entry)
+        end
+
+        -- exit if there are at least two rows and one is a full row of empty signals
+        if i > 0 and not has_signals then break end
+    end
+    return list
+end
+
+---@param gui FrameworkGui?
+---@param fc_entity FilterCombinatorData?
+update_gui_state = function(gui, fc_entity)
+    local fc_config = fc_entity.config
+
+    local entity_status = (not fc_config.enabled) and defines.entity_status.disabled -- if not enabled, status is disabled
+        or fc_config.status                                                          -- if enabled, the registered state takes precedence if present
+        or defines.entity_status.working                                             -- otherwise, it is working
+
+    local on_off = gui:find_element('on-off')
+    on_off.switch_state = values_on_off[fc_config.enabled]
+
+    local lamp = gui:find_element('lamp')
+    lamp.sprite = ModGui.STATUS_SPRITES[entity_status]
+
+    local status = gui:find_element('status')
+    status.caption = { ModGui.STATUS_NAMES[entity_status] }
+
+    local incl_excl = gui:find_element('incl-excl')
+    incl_excl.switch_state = values_incl_excl[fc_config.include_mode]
+
+    local mode_wire = gui:find_element('mode-wire')
+    mode_wire.state = fc_config.use_wire
+    local item_grid = gui:find_element('item_grid')
+    item_grid.visible = not fc_config.use_wire
+
+    local red_wire = gui:find_element('red_wire_indicator')
+    red_wire.state = fc_config.filter_wire == defines.wire_type.red
+
+    local green_wire = gui:find_element('green_wire_indicator')
+    green_wire.state = fc_config.filter_wire == defines.wire_type.green
+
+    local slot_buttons = make_grid_buttons(fc_entity)
+    gui:replace_children('signals', slot_buttons)
+end
+
+---@param fc_gui FilterCombinatorGui
+gui_updater = function(ev, fc_gui)
+    local fc_entity = This.fico:entity(fc_gui.fc_id)
+    if not fc_entity then
+        Event.remove(-1, gui_updater, nil, fc_gui)
+        return
+    end
+
+    This.fico:update_entity(fc_entity)
+
+    if not (fc_gui.last_config and table.compare(fc_gui.last_config, fc_entity.config)) then
+        update_gui_state(fc_gui.gui, fc_entity)
+        fc_gui.last_config = table.deepcopy(fc_entity.config)
+    end
+end
+
+----------------------------------------------------------------------------------------------------
+
+--- @param event EventData.on_gui_opened
+local function onGuiOpened(event)
+    local player, player_data = Player.get(event.player_index)
+    if player.opened and player_data.fc_gui and player.opened == player_data.fc_gui.gui.root then
+        player.opened = nil
+    end
+
+    -- close an eventually open gui
+    onWindowClosed(event)
+
+    local entity = event and (event.created_entity or event.entity) --[[@as LuaEntity]]
+    local fc_id = entity.unit_number --[[@as integer]]
+    local fc_entity = This.fico:entity(fc_id)
+
+    if not fc_entity then
+        log('Data missing for ' ..
+            event.entity.name .. ' on ' .. event.entity.surface.name .. ' at ' .. serpent.line(event.entity.position) .. ' refusing to display UI')
+        player.opened = nil
+        return
+    end
+
+    local gui = Mod.gui_manager:create_gui(player.gui.screen, get_ui(fc_entity))
+
+    -- update_gui_state(gui, fc_entity)
+
+    ---@class FilterCombinatorGui
+    ---@field gui FrameworkGui
+    ---@field fc_id integer
+    ---@field last_config FilterCombinatorConfig?
+    player_data.fc_gui = {
+        gui = gui,
+        fc_id = fc_id,
+        last_config = nil,
+    }
+
+    Event.register(-1, gui_updater, nil, player_data.fc_gui)
+
+    player.opened = gui.root
+end
+
+local gui_names = { [const.filter_combinator_name] = true }
+local function match_gui_entity(event)
+    local entity = event and (event.created_entity or event.entity) --[[@as LuaEntity]]
+    return entity and gui_names[entity.name]
+end
+
+Event.on_event(defines.events.on_gui_opened, onGuiOpened, match_gui_entity)
 
 return ModGui
