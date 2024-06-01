@@ -21,7 +21,12 @@ for _, info in pairs(data.raw) do
     end
 end
 
+-- round up
+count = 10 * math.ceil(count / 10)
+
 data.raw['constant-combinator'][const.internal_cc_name].item_slot_count = count
+-- visible cc for debugging with larger slot count
+data.raw['constant-combinator'][const.internal_debug_cc_name].item_slot_count = count
 
 --------------------------------------------------------------------------------
 require('framework.other-mods').data_final_fixes()
