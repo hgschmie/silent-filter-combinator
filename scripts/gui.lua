@@ -304,10 +304,6 @@ onSwitchEnabled = function(event)
     if not fc_entity then return end
 
     fc_entity.config.enabled = on_off_values[event.element.switch_state]
-
-    -- data.cc.get_or_create_control_behavior().enabled = data.config.enabled
-    -- data.ex.get_or_create_control_behavior().enabled = data.config.enabled
-    -- data.main.active = data.config.enabled
 end
 
 ----------------------------------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 --
 -- Filter combinator main code
 --
-
 local Is = require('__stdlib__/stdlib/utils/is')
 local table = require('__stdlib__/stdlib/utils/table')
 
@@ -50,13 +49,14 @@ function FiCo:totalCount()
     return global.fc_data.count
 end
 
---- Returns a map of all entities
+--- Returns data for all filter combinators.
 --- @return FilterCombinatorData[] entities
 function FiCo:entities()
     return global.fc_data.fc
 end
 
---- Returns a map of all entities
+--- Returns data for a given filter combinator
+--- @param entity_id integer main unit number (== entity id)
 --- @return FilterCombinatorData? entity
 function FiCo:entity(entity_id)
     return global.fc_data.fc[entity_id]
@@ -69,7 +69,7 @@ function FiCo:setEntity(entity_id, fc_entity)
     assert((fc_entity ~= nil and global.fc_data.fc[entity_id] == nil)
         or (fc_entity == nil and global.fc_data.fc[entity_id] ~= nil))
 
-        if (fc_entity) then
+    if (fc_entity) then
         assert(Is.Valid(fc_entity.main) and fc_entity.main.unit_number == entity_id)
     end
 
@@ -220,94 +220,240 @@ end
 
 local signal_each = { type = 'virtual', name = 'signal-each' }
 
-local function update_wiring(fc_entity)
-    local behavior = function(ref, parameters)
-        if parameters.first_signal then
-            parameters.first_signal = signal_each
-            parameters.output_signal = signal_each
-        end
-        fc_entity.ref[ref].get_or_create_control_behavior().parameters = parameters
-    end
+local initial_behavior = {
+    { src = 'filter',    comparator = '!=', copy_count_from_input = false },
+    { src = 'inp',       comparator = '<' },
+    { src = 'd2',        comparator = '>' },
+    { src = 'd3',        comparator = '>' },
+    { src = 'd4',        comparator = '<' },
+    { src = 'input_neg', operation = '*',   second_constant = 0 - (2 ^ 31 - 1) },
+    { src = 'a2',        operation = '*',   second_constant = -1 },
+    { src = 'input_pos', operation = '*',   second_constant = 2 ^ 31 - 1 },
+    { src = 'a4',        operation = '*',   second_constant = -1 },
+    { src = 'out',       operation = '+',   second_constant = 0 },
+    { src = 'inv',       operation = '*',   second_constant = -1 },
+}
 
-    behavior('ccf', { comparator = '!=', copy_count_from_input = false })
-    behavior('d1', { comparator = '<' })
-    behavior('d2', { comparator = '>' })
-    behavior('d3', { comparator = '>' })
-    behavior('d4', { comparator = '<' })
-    behavior('a1', { operation = '*', second_constant = 0 - (2 ^ 31 - 1) })
-    behavior('a2', { operation = '*', second_constant = -1 })
-    behavior('a3', { operation = '*', second_constant = 2 ^ 31 - 1 })
-    behavior('a4', { operation = '*', second_constant = -1 })
+local wiring = {
+    initial = {
+        -- ex, target_entity = inv, target_circuit_id = output }
+        { src = 'ex',        dst = 'inv',            dst_circuit = 'output' },
+        -- cc, target_entity = inv, target_circuit_id = input }
+        { src = 'cc',        dst = 'inv',            dst_circuit = 'input' },
+        -- Exclusive Mode
+        -- ccf, target_entity = inv, target_circuit_id = input, source_circuit_id = output, }
+        { src = 'filter',    src_circuit = 'output', dst = 'inv',           dst_circuit = 'input' },
 
-    behavior('out', { operation = '+', second_constant = 0 })
-    behavior('inv', { operation = '*', second_constant = -1 })
+        -- Connect Logic
+        -- d1, target_entity = d2, target_circuit_id = input, source_circuit_id = input, }
+        { src = 'inp',       src_circuit = 'input',  dst = 'd2',            dst_circuit = 'input' },
+        -- d1.connect_neighbour { wire = defines.wire_type.green, target_entity = d2, target_circuit_id = input, source_circuit_id = input, }
+        { src = 'inp',       src_circuit = 'input',  dst = 'd2',            dst_circuit = 'input',  wire = 'green' },
 
-    local wire = function(src_ref, src_type, dst_ref, dst_type, wire)
-        wire = wire or 'red'
-        wire = defines.wire_type[wire]
+        -- -- Negative Inputs
+        -- a1, target_entity = cc, source_circuit_id = input }
+        { src = 'input_neg', src_circuit = 'input',  dst = 'cc' },
+        -- a2, target_entity = a1, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'a2',        src_circuit = 'input',  dst = 'input_neg',     dst_circuit = 'output' },
+        -- d3, target_entity = a2, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'd3',        src_circuit = 'input',  dst = 'a2',            dst_circuit = 'output' },
+        -- d3, target_entity = d1, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'd3',        src_circuit = 'input',  dst = 'inp',           dst_circuit = 'output' },
 
-        fc_entity.ref[src_ref].connect_neighbour {
-            target_entity = fc_entity.ref[dst_ref],
-            wire = wire,
-            source_circuit_id = defines.circuit_connector_id['combinator_' .. src_type],
-            target_circuit_id = defines.circuit_connector_id['combinator_' .. dst_type],
-        }
-    end
+        -- -- Positive Inputs
+        -- a3, target_entity = cc, source_circuit_id = input }
+        { src = 'input_pos', src_circuit = 'input',  dst = 'cc' },
+        -- a4, target_entity = a3, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'a4',        src_circuit = 'input',  dst = 'input_pos',     dst_circuit = 'output' },
+        -- d4, target_entity = a4, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'd4',        src_circuit = 'input',  dst = 'a4',            dst_circuit = 'output' },
+        -- d4, target_entity = d2, target_circuit_id = output, source_circuit_id = input,}
+        { src = 'd4',        src_circuit = 'input',  dst = 'd2',            dst_circuit = 'output' },
 
-    -- ex, target_entity = inv, target_circuit_id = output }
-    wire('ex', 'output', 'inv', 'output')
-    -- cc, target_entity = inv, target_circuit_id = input }
-    wire('cc', 'output', 'inv', 'input')
-    -- Exclusive Mode
-    -- ccf, target_entity = inv, target_circuit_id = input, source_circuit_id = output, }
-    wire('ccf', 'output', 'inv', 'input')
+        -- -- Wire up output (to be able to use any color wire again)
+        -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = a1, target_circuit_id = output, source_circuit_id = input, }
+        { src = 'out',       src_circuit = 'input',  dst = 'input_neg',     dst_circuit = 'output', wire = 'green' },
+        -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = d3, target_circuit_id = output, source_circuit_id = input, }
+        { src = 'out',       src_circuit = 'input',  dst = 'd3',            dst_circuit = 'output', 'green' },
+        -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = a3, target_circuit_id = output, source_circuit_id = input, }
+        { src = 'out',       src_circuit = 'input',  dst = 'input_pos',     dst_circuit = 'output', wire = 'green' },
+        -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = d4, target_circuit_id = output, source_circuit_id = input, }
+        { src = 'out',       src_circuit = 'input',  dst = 'd4',            dst_circuit = 'output', wire = 'green' },
 
-    -- Connect Logic
-    -- d1, target_entity = d2, target_circuit_id = input, source_circuit_id = input, }
-    wire('d1', 'input', 'd2', 'input')
-    -- d1.connect_neighbour { wire = defines.wire_type.green, target_entity = d2, target_circuit_id = input, source_circuit_id = input, }
-    wire('d1', 'input', 'd2', 'input', 'green')
+        -- -- Connect main entity
+        -- main, target_entity = out, target_circuit_id = output, source_circuit_id = output, }
+        { src = 'main',      src_circuit = 'output', dst = 'out',           dst_circuit = 'output' },
+        -- main.connect_neighbour { wire = defines.wire_type.green, target_entity = out, target_circuit_id = output, source_circuit_id = output, }
+        { src = 'main',      src_circuit = 'output', dst = 'out',           dst_circuit = 'output', wire = 'green' },
+        -- main, target_entity = d1, target_circuit_id = input, source_circuit_id = input, }
+        { src = 'main',      src_circuit = 'input',  dst = 'inp',           dst_circuit = 'input' },
+        -- main.connect_neighbour { wire = defines.wire_type.green, target_entity = d1, target_circuit_id = input, source_circuit_id = input, }
+        { src = 'main',      src_circuit = 'input',  dst = 'inp',           dst_circuit = 'input',  wire = 'green' },
+    },
+    disconnect1 = {
+        -- Disconnect main, which was potentially rewired for wire input based filtering
+        -- data.main.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'inp',    dst_circuit = 'input' },
+        -- data.main.disconnect_neighbour { wire = defines.wire_type.green, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'inp',    dst_circuit = 'input', wire = 'green' },
+        -- data.main.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.filter, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'filter', dst_circuit = 'input' },
+        -- data.main.disconnect_neighbour { wire = defines.wire_type.green, target_entity = data.filter, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'filter', dst_circuit = 'input', wire = 'green' },
+    },
+    disconnect2 = {
+        -- Disconnect configured input, which gets rewired for exclusive mode and wire input filtering
+        -- data.cc.disconnect_neighbour(defines.wire_type.red)
+        { src = 'cc' },
 
-    -- -- Negative Inputs
-    -- a1, target_entity = cc, source_circuit_id = input }
-    wire('a1', 'input', 'cc', 'output')
-    -- a2, target_entity = a1, target_circuit_id = output, source_circuit_id = input,}
-    wire('a2', 'input', 'a1', 'output')
-    -- d3, target_entity = a2, target_circuit_id = output, source_circuit_id = input,}
-    wire('d3', 'input', 'a2', 'output')
-    -- d3, target_entity = d1, target_circuit_id = output, source_circuit_id = input,}
-    wire('d3', 'input', 'd1', 'output')
+        -- Disconnect inverter, which gets rewired for exclusive mode
+        -- data.inv.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, source=output, }
+        { src = 'inv',    src_circuit = 'output', dst = 'input_pos', dst_circuit = 'input' },
+        -- data.inv.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, source=output, }
+        { src = 'inv',    src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
 
-    -- -- Positive Inputs
-    -- a3, target_entity = cc, source_circuit_id = input }
-    wire('a3', 'input', 'cc', 'output')
-    -- a4, target_entity = a3, target_circuit_id = output, source_circuit_id = input,}
-    wire('a4', 'input', 'a3', 'output')
-    -- d4, target_entity = a4, target_circuit_id = output, source_circuit_id = input,}
-    wire('d4', 'input', 'a4', 'output')
-    -- d4, target_entity = d2, target_circuit_id = output, source_circuit_id = input,}
-    wire('d4', 'input', 'd2', 'output')
+        -- Disconnect filter, which gets rewired for wire input based filtering
+        -- data.filter.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, source=output, }
+        { src = 'filter', src_circuit = 'output', dst = 'input_pos', dst_circuit = 'input' },
+        -- data.filter.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, source=output, }
+        { src = 'filter', src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
 
-    -- -- Wire up output (to be able to use any color wire again)
-    -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = a1, target_circuit_id = output, source_circuit_id = input, }
-    wire('out', 'input', 'a1', 'output', 'green')
-    -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = d3, target_circuit_id = output, source_circuit_id = input, }
-    wire('out', 'input', 'd3', 'output', 'green')
-    -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = a3, target_circuit_id = output, source_circuit_id = input, }
-    wire('out', 'input', 'a3', 'output', 'green')
-    -- out.connect_neighbour { wire = defines.wire_type.green, target_entity = d4, target_circuit_id = output, source_circuit_id = input, }
-    wire('out', 'input', 'd4', 'output', 'green')
+    },
+    connect_default = {
+        -- Default config
+        -- data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, }
+        { src = 'cc',   dst = 'input_pos',     dst_circuit = 'input' },
+        -- data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, }
+        { src = 'cc',   dst = 'input_neg',     dst_circuit = 'input' },
 
-    -- -- Connect main entity
-    -- main, target_entity = out, target_circuit_id = output, source_circuit_id = output, }
-    wire('main', 'output', 'out', 'output')
-    -- main.connect_neighbour { wire = defines.wire_type.green, target_entity = out, target_circuit_id = output, source_circuit_id = output, }
-    wire('main', 'output', 'out', 'output', 'green')
-    -- main, target_entity = d1, target_circuit_id = input, source_circuit_id = input, }
-    wire('main', 'input', 'd1', 'input')
-    -- main.connect_neighbour { wire = defines.wire_type.green, target_entity = d1, target_circuit_id = input, source_circuit_id = input, }
-    wire('main', 'input', 'd1', 'input', 'green')
+        -- data.main.connect_neighbour { wire = defines.wire_type.red, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'inp',          dst_circuit = 'input' },
+        -- data.main.connect_neighbour { wire = defines.wire_type.green, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input', dst = 'inp',          dst_circuit = 'input', wire = 'green' },
+    },
+    connect_exclude = {
+        -- All but the configured signals
+        -- data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.inv, target=input }
+        { src = 'cc',   dst = 'inv',            dst_circuit = 'input' },
+
+        -- data.inv.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, source=output, }
+        { src = 'inv',  src_circuit = 'output', dst = 'input_pos',    dst_circuit = 'input' },
+        -- data.inv.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, source=output, }
+        { src = 'inv',  src_circuit = 'output', dst = 'input_neg',    dst_circuit = 'input' },
+
+        -- data.main.connect_neighbour { wire = defines.wire_type.red, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input',  dst = 'inp',          dst_circuit = 'input' },
+        -- data.main.connect_neighbour { wire = defines.wire_type.green, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input',  dst = 'inp',          dst_circuit = 'input', wire = 'green' },
+    },
+    connect_use_wire = {
+        -- Wire input is the signals we want
+        -- data.main.connect_neighbour { wire = non_filter_wire, target_entity = data.inp, target=input, source=input, }
+        { src = 'main',   src_circuit = 'input',  dst = 'inp',       dst_circuit = 'input', wire = 'non_filter' },
+        -- data.main.connect_neighbour { wire = filter_wire, target_entity = data.filter, target=input, source=input, }
+        { src = 'main',   src_circuit = 'input',  dst = 'filter',    dst_circuit = 'input', wire = 'filter' },
+
+        -- data.filter.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, source=output, }
+        { src = 'filter', src_circuit = 'output', dst = 'input_pos', dst_circuit = 'input' },
+        -- data.filter.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, source=output, }
+        { src = 'filter', src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
+
+    },
+    connect_use_wire_exclude = {
+        -- All but those present on an input wire
+        -- data.main.connect_neighbour { wire = non_filter_wire, target_entity = data.inp, target=input, source=input, }
+        { src = 'main', src_circuit = 'input',  dst = 'inp',       dst_circuit = 'input', wire = 'non_filter' },
+        -- data.main.connect_neighbour { wire = filter_wire, target_entity = data.filter, target=input, source=input, }
+        { src = 'main', src_circuit = 'input',  dst = 'filter',    dst_circuit = 'input', wire = 'filter' },
+
+        -- data.inv.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, source=output, }
+        { src = 'inv',  src_circuit = 'output', dst = 'input_pos', dst_circuit = 'input' },
+        -- data.inv.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_neg, target=input, source=output, }
+        { src = 'inv',  src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
+    }
+}
+
+
+---@class FcWireConfig
+---@field src string
+---@field dst string?
+---@field src_circuit string?
+---@field dst_circuit string?
+---@field wire string?
+
+
+---@param fc_entity FilterCombinatorData
+---@param wire_cfg FcWireConfig
+---@param wire_type table<string, defines.wire_type>?
+local function connect_wire(fc_entity, wire_cfg, wire_type)
+    wire_type = wire_type or defines.wire_type
+    local wire = wire_type[wire_cfg.wire or 'red']
+
+    assert(fc_entity.ref[wire_cfg.src])
+    assert(fc_entity.ref[wire_cfg.dst])
+
+    assert(fc_entity.ref[wire_cfg.src].connect_neighbour {
+        target_entity = fc_entity.ref[wire_cfg.dst],
+        wire = wire,
+        source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
+        target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
+    })
 end
+
+---@param fc_entity FilterCombinatorData
+---@param wire_cfg FcWireConfig
+local function disconnect_wire(fc_entity, wire_cfg)
+    local wire = defines.wire_type[wire_cfg.wire or 'red']
+
+    assert(fc_entity.ref[wire_cfg.src])
+    if wire_cfg.dst then
+        assert(fc_entity.ref[wire_cfg.dst])
+    end
+
+    if wire_cfg.dst then
+        fc_entity.ref[wire_cfg.src].disconnect_neighbour {
+            target_entity = fc_entity.ref[wire_cfg.dst],
+            wire = wire,
+            source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
+            target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
+        }
+    else
+        fc_entity.ref[wire_cfg.src].disconnect_neighbour(wire)
+    end
+end
+
+
+--
+--    -4/-4  -2/-4   0/-4   2/-4   4/-4
+--    -4/-2  -2/-2   0/-2   2/-2   4/-2
+--    -4/ 0  -2/ 0   0/ 0   2/ 0   4/ 0
+--    -4/ 2  -2/ 2   0/ 2   2/ 2   4/ 2
+--    -4/ 4  -2/ 4   0/ 4   2/ 4   4/ 4
+--
+local sub_entities = {
+    { id = 'cc',        type = 'cc', x = -4, y = 4 },
+    { id = 'ex',        type = 'cc', x = 4,  y = 4 },
+
+    { id = 'filter',    type = 'dc', x = -2, y = 2 },
+
+    { id = 'inp',       type = 'dc', x = 0,  y = 4 },
+    { id = 'out',       type = 'ac', x = 0,  y = -4 },
+
+    { id = 'inv',       type = 'ac', x = 2,  y = 2 },
+
+    { id = 'input_pos', type = 'ac', x = -2, y = 0 },
+    { id = 'input_neg', type = 'ac', x = 2,  y = 0 },
+
+    { id = 'a2',        type = 'ac', x = -4, y = -2 },
+    { id = 'a4',        type = 'ac', x = -2, y = -2 },
+
+    { id = 'd2',        type = 'dc', x = 0,  y = -2 },
+    { id = 'd3',        type = 'dc', x = 2,  y = -2 },
+    { id = 'd4',        type = 'dc', x = 4,  y = -2 },
+
+}
+
+------------------------------------------------------------------------
 
 --- Creates a new entity from the main entity, registers with the mod
 --- and configures it.
@@ -347,247 +493,30 @@ function FiCo:create(main, player_index, tags)
     local all_signals = self:getAllSignalsConstantCombinator(fc_entity)
     fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
 
-    -- setup the wiring of the various sub_entities
-    update_wiring(fc_entity)
+    -- setup all the sub-entities
+    for _, behavior in pairs(initial_behavior) do
+        local parameters = {
+            first_signal = behavior.first_signal or signal_each,
+            output_signal = behavior.output_signal or signal_each,
+            comparator = behavior.comparator,
+            operation = behavior.operation,
+            copy_count_from_input = behavior.copy_count_from_input,
+            second_constant = behavior.second_constant
+        }
+        fc_entity.ref[behavior.src].get_or_create_control_behavior().parameters = parameters
+    end
+
+    -- setup the initial wiring
+    for _, connect in pairs(wiring.initial) do
+        connect_wire(fc_entity, connect)
+    end
 
     self:setEntity(entity_id, fc_entity)
 
     return fc_entity
 end
 
---     global.sil_filter_combinators[main.unit_number] = main.unit_number
-
---     local ids = {}
---     ids[main.unit_number] = main
-
---     local create_internal_entity = function(main, proto)
---         ---@type LuaEntity
---         local ent = main.surface.create_entity {
---             name = proto,
---             position = main.position,
---             direction = main.direction,
---             force = main.force,
---             create_build_effect_smoke = false,
---             spawn_decorations = false,
---             move_stuck_players = true,
---         }
-
---         global.sil_filter_combinators[ent.unit_number] = main.unit_number
---         ids[ent.unit_number] = ent
-
---         return ent
---     end
-
---     --- @type FilterCombinator
---     local conf = get_default_config()
-
---     -- Logic Circuitry Entities
---     local cc = create_internal_entity(main, const.internal_cc_name)
---     local d1 = create_internal_entity(main, const.internal_dc_name)
---     local d2 = create_internal_entity(main, const.internal_dc_name)
---     local d3 = create_internal_entity(main, const.internal_dc_name)
---     local d4 = create_internal_entity(main, const.internal_dc_name)
---     local a1 = create_internal_entity(main, const.internal_ac_name)
---     local a2 = create_internal_entity(main, const.internal_ac_name)
---     local a3 = create_internal_entity(main, const.internal_ac_name)
---     local a4 = create_internal_entity(main, const.internal_ac_name)
---     local ccf = create_internal_entity(main, const.internal_dc_name)
---     local out = create_internal_entity(main, const.internal_ac_name)
---     local ex = create_internal_entity(main, const.internal_cc_name)
---     local inv = create_internal_entity(main, const.internal_ac_name)
-
---     -- Check if this was a blueprint which we added custom data to
---     if tags then
---         local behavior = cc.get_or_create_control_behavior()
---         if tags.config ~= nil and tags.params ~= nil then
---             conf = FiCo.add_metatable(tags.config) --[[@as FilterCombinator]]
---             behavior.parameters = tags.params
---         elseif tags.cc_config ~= nil and tags.cc_params ~= nil then
---             -- compakt combinator code uses cc_ for some reason...
---             conf = FiCo.add_metatable(tags.cc_config) --[[@as FilterCombinator]]
---             behavior.parameters = tags.cc_params
---         end
---         behavior.enabled = conf.enabled
---         ex.get_or_create_control_behavior().enabled = conf.enabled
---     end
-
---     local data = {
---         ids = ids,
---         main = main,
---         cc = cc,
---         calc = { d1, d2, d3, d4, a1, a2, a3, a4, ccf, out, inv },
---         ex = ex,
---         inv = inv,
---         input_pos = a3,
---         input_neg = a1,
---         filter = ccf,
---         inp = d1,
---         config = conf,
---     }
-
---     -- Set up Exclusive mode Combinator signals
---     FiCo.set_all_signals(ex)
---     -- Set Conditions
---     ccf.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '!=', copy_count_from_input = false }
---     out.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '+', second_constant = 0 }
---     d1.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '<' }
---     d2.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '>' }
---     a1.get_or_create_control_behavior().parameters = {
---         first_signal = signal_each,
---         output_signal = signal_each,
---         operation = '*',
---         second_constant = 0 -
---             (2 ^ 31 - 1),
---     }
---     a2.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
---     d3.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '>' }
---     a3.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = 2 ^ 31 - 1 }
---     a4.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
---     d4.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, comparator = '<' }
---     inv.get_or_create_control_behavior().parameters = { first_signal = signal_each, output_signal = signal_each, operation = '*', second_constant = -1 }
-
---     -- Exclusive Mode
---     ex.connect_neighbour { wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_output }
---     cc.connect_neighbour { wire = defines.wire_type.red, target_entity = inv, target_circuit_id = defines.circuit_connector_id.combinator_input }
---     -- Connect Logic
---     ccf.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = inv,
---         target_circuit_id = defines.circuit_connector_id.combinator_input,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_output,
---     }
---     d1.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = d2,
---         target_circuit_id = defines.circuit_connector_id.combinator_input,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     d1.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = d2,
---         target_circuit_id = defines.circuit_connector_id.combinator_input,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     -- Negative Inputs
---     a1.connect_neighbour { wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input }
---     a2.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = a1,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     d3.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = a2,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     d3.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = d1,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     -- Positive Inputs
---     a3.connect_neighbour { wire = defines.wire_type.red, target_entity = cc, source_circuit_id = defines.circuit_connector_id.combinator_input }
---     a4.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = a3,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     d4.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = a4,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     d4.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = d2,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     -- Wire up output (to be able to use any color wire again)
---     out.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = a1,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     out.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = d3,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     out.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = a3,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     out.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = d4,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     -- Connect main entity
---     main.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = out,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_output,
---     }
---     main.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = out,
---         target_circuit_id = defines.circuit_connector_id.combinator_output,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_output,
---     }
---     main.connect_neighbour {
---         wire = defines.wire_type.red,
---         target_entity = d1,
---         target_circuit_id = defines.circuit_connector_id.combinator_input,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     main.connect_neighbour {
---         wire = defines.wire_type.green,
---         target_entity = d1,
---         target_circuit_id = defines.circuit_connector_id.combinator_input,
---         source_circuit_id =
---             defines.circuit_connector_id.combinator_input,
---     }
---     -- Store Entities
---     assert(not global.sil_fc_data[main.unit_number])
-
---     global.sil_fc_data[main.unit_number] = data
---     global.sil_fc_count = global.sil_fc_count + 1
-
---     -- check for default config
---     if not (conf.enabled == true and conf.filter_input_from_wire == false and conf.filter_input_wire == defines.wire_type.green and conf.exclusive == false) then
---         data.config:old_update_entity(data)
---     end
-
---     return data
--- end
+------------------------------------------------------------------------
 
 ---@param fc_entity FilterCombinatorData
 function FiCo:update_entity(fc_entity)
@@ -600,12 +529,65 @@ function FiCo:update_entity(fc_entity)
     else
         fc_entity.config.status = fc_entity.main.status
     end
-
-    -- TODO - rewire/reconfig if needed
 end
 
--- ------------------------------------------------------------------------
+------------------------------------------------------------------------
 
+---@param fc_entity FilterCombinatorData
+function FiCo:rewire_entity(fc_entity)
+    if not fc_entity then return end
+
+    local fc_config = fc_entity.config
+
+    for _, cfg in pairs(wiring.disconnect1) do
+        disconnect_wire(fc_entity, cfg)
+    end
+
+    -- turn main entity and the constant combinators on or off
+    fc_entity.ref.main.active = fc_config.enabled
+    fc_entity.ref.ex.get_or_create_control_behavior().enabled = fc_config.enabled
+
+    local cc_control = fc_entity.ref.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+    cc_control.enabled = fc_config.enabled
+    cc_control.parameters = table.deepcopy(fc_config.signals)
+
+    if not fc_config.enabled then return end
+
+    for _, cfg in pairs(wiring.disconnect2) do
+        disconnect_wire(fc_entity, cfg)
+    end
+
+    local rewire_cfg
+    if fc_config.include_mode and fc_config.use_wire then
+        -- all inputs on a wire
+        rewire_cfg = wiring.connect_use_wire
+    elseif fc_config.use_wire then
+        -- all but inputs on a wire
+        rewire_cfg = wiring.connect_use_wire_exclude
+    elseif fc_config.include_mode then
+        -- default
+        rewire_cfg = wiring.connect_default
+    else
+        -- exclude mode
+        rewire_cfg = wiring.connect_exclude
+    end
+
+    local wire_type = {
+        red = defines.wire_type.red,
+        green = defines.wire_type.green,
+        filter = fc_config.filter_wire == defines.wire_type.red and defines.wire_type.red or defines.wire_type.green,
+        non_filter = fc_config.filter_wire == defines.wire_type.green and defines.wire_type.red or defines.wire_type.green,
+    }
+
+    -- reconnect the configuration
+    for _, cfg in pairs(rewire_cfg) do
+        connect_wire(fc_entity, cfg, wire_type)
+    end
+end
+
+---------------------------------------------------------------------------
+
+--- @param entity_id integer main unit number (== entity id)
 function FiCo:destroy(entity_id)
     assert(Is.Number(entity_id))
 
@@ -636,207 +618,6 @@ function FiCo.locate_config(entity)
 end
 
 ------------------------------------------------------------------------
-
-
---- @param data FilterCombinatorData
-function FiCo:old_update_entity(data)
-    local non_filter_wire = defines.wire_type.red
-    local filter_wire = defines.wire_type.green
-
-    if self.filter_input_wire == defines.wire_type.red then
-        non_filter_wire = defines.wire_type.green
-        filter_wire = defines.wire_type.red
-    end
-
-    -- Disconnect main, which was potentially rewired for wire input based filtering
-    data.main.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.inp,
-        target_circuit_id = defines.circuit_connector_id.combinator_input,
-        source_circuit_id =
-            defines.circuit_connector_id.combinator_input,
-    }
-    data.main.disconnect_neighbour {
-        wire = defines.wire_type.green,
-        target_entity = data.inp,
-        target_circuit_id = defines.circuit_connector_id.combinator_input,
-        source_circuit_id =
-            defines.circuit_connector_id.combinator_input,
-    }
-    data.main.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.filter,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_input,
-    }
-    data.main.disconnect_neighbour {
-        wire = defines.wire_type.green,
-        target_entity = data.filter,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_input,
-    }
-
-    if not self.enabled then
-        -- If disabled nothing else to do after disconnecting main entity
-        return
-    end
-
-    -- Disconnect configured input, which gets rewired for exclusive mode and wire input filtering
-    data.cc.disconnect_neighbour(defines.wire_type.red)
-    -- Disconnect inverter, which gets rewired for exclusive mode
-    data.inv.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.input_pos,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_output,
-    }
-    data.inv.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.input_neg,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_output,
-    }
-    -- Disconnect filter, which gets rewired for wire input based filtering
-    data.filter.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.input_pos,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_output,
-    }
-    data.filter.disconnect_neighbour {
-        wire = defines.wire_type.red,
-        target_entity = data.input_neg,
-        target_circuit_id = defines.circuit_connector_id
-            .combinator_input,
-        source_circuit_id = defines.circuit_connector_id.combinator_output,
-    }
-
-    if self.exclusive and not self.filter_input_from_wire then
-        -- All but the configured signals
-        data.inv.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_pos,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-        data.inv.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_neg,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-        data.main.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.main.connect_neighbour {
-            wire = defines.wire_type.green,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_input,
-        }
-        data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.inv, target_circuit_id = defines.circuit_connector_id.combinator_input }
-    elseif not self.filter_input_from_wire then
-        -- Default config
-        data.cc.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_pos,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-        }
-        data.cc.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_neg,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-        }
-        data.main.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.main.connect_neighbour {
-            wire = defines.wire_type.green,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_input,
-        }
-    elseif self.exclusive then
-        -- All but those present on an input wire
-        data.main.connect_neighbour {
-            wire = non_filter_wire,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.main.connect_neighbour {
-            wire = filter_wire,
-            target_entity = data.filter,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.inv.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_pos,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-        data.inv.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_neg,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-    else
-        -- Wire input is the signals we want
-        data.main.connect_neighbour {
-            wire = non_filter_wire,
-            target_entity = data.inp,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.main.connect_neighbour {
-            wire = filter_wire,
-            target_entity = data.filter,
-            target_circuit_id = defines.circuit_connector_id.combinator_input,
-            source_circuit_id =
-                defines.circuit_connector_id.combinator_input,
-        }
-        data.filter.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_pos,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-        data.filter.connect_neighbour {
-            wire = defines.wire_type.red,
-            target_entity = data.input_neg,
-            target_circuit_id = defines.circuit_connector_id
-                .combinator_input,
-            source_circuit_id = defines.circuit_connector_id.combinator_output,
-        }
-    end
-end
 
 ---@param table FilterCombinator
 ---@return table FilterCombinator
