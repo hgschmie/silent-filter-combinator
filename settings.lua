@@ -18,6 +18,14 @@ data:extend({
          default_value = false,
          order = "z"
       },
+      {
+         -- make internal units visible
+         setting_type = "runtime-per-user",
+         name = Mod.PREFIX .. 'comb-visible',
+         type = "bool-setting",
+         default_value = false,
+         order = "b"
+      },
 })
 
 --------------------------------------------------------------------------------
