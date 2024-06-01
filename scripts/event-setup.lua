@@ -142,17 +142,23 @@ end
 
 --------------------------------------------------------------------------------
 
---- @param changed ConfigurationChangedData
+--- @param changed ConfigurationChangedData?
 local function onConfigurationChanged(changed)
-    -- TODO - rebuild all ex constant combinators slot info.
+    if This and This.fico then
+        This.fico:clearAllSignalsConstantCombinator()
 
-    -- global.sil_fc_slot_error_logged = false
-    -- log('Updating for potentially changed signals...')
-    -- for _, data in pairs(global.sil_fc_data) do
-    --     if data and data.ex and data.ex.valid then
-    --         FiCo.set_all_signals(data.ex)
-    --     end
-    -- end
+        for _,fc_entity in pairs(This.fico:entities()) do
+            local all_signals = This.fico:getAllSignalsConstantCombinator(fc_entity)
+            fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
+        end
+    end
+end
+
+local function onRuntimeModSettingChanged(ev)
+    Mod.settings:flush()
+    log(string.format("setting now: %s/%s",tostring(Mod.settings:player(ev.player_index).comb_visible), tostring(settings['player'][Mod.PREFIX .. "comb-visible"].value)))
+
+    onConfigurationChanged()
 end
 
 --------------------------------------------------------------------------------
@@ -218,6 +224,7 @@ Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
 Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
 
 Event.on_configuration_changed(onConfigurationChanged)
+Event.register(defines.events.on_runtime_mod_setting_changed, onRuntimeModSettingChanged)
 
 -- events.register(defines.events.on_tick, run)
 -- events.register(defines.events.on_player_cursor_stack_changed, ensure_internal_connections)
