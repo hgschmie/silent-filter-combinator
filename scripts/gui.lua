@@ -450,6 +450,7 @@ gui_updater = function(ev, fc_gui)
     This.fico:update_entity(fc_entity)
 
     if not (fc_gui.last_config and table.compare(fc_gui.last_config, fc_entity.config)) then
+        This.fico:rewire_entity(fc_entity)
         update_gui_state(fc_gui.gui, fc_entity)
         fc_gui.last_config = table.deepcopy(fc_entity.config)
     end
@@ -479,8 +480,6 @@ local function onGuiOpened(event)
     end
 
     local gui = Mod.gui_manager:create_gui(player.gui.screen, get_ui(fc_entity))
-
-    -- update_gui_state(gui, fc_entity)
 
     ---@class FilterCombinatorGui
     ---@field gui FrameworkGui
