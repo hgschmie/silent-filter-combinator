@@ -93,4 +93,24 @@ cc.flags = combinator_flags
 cc.minable = nil
 cc.selectable_in_game = false
 
-data:extend{ac, cc, dc}
+-- PrototypeBase
+
+-- for debugging, add a tint to make them more visible
+local debug_ac = table.deepcopy(data.raw['arithmetic-combinator']['arithmetic-combinator']) --[[@as data.ConstantCombinatorPrototype]]
+debug_ac.name = const.internal_debug_ac_name
+local debug_cc = table.deepcopy(data.raw['constant-combinator']['constant-combinator']) --[[@as data.ConstantCombinatorPrototype]]
+debug_cc.name = const.internal_debug_cc_name
+local debug_dc = table.deepcopy(data.raw['decider-combinator']['decider-combinator']) --[[@as data.ConstantCombinatorPrototype]]
+debug_dc.name = const.internal_debug_dc_name
+
+local tint = { r = 0, g = 0.8, b = 0.4, a = 1}
+for _, directions in pairs({'north', 'south','east','west'}) do
+    debug_ac.sprites[directions].layers[1].tint = tint
+    debug_ac.sprites[directions].layers[1].hr_version.tint = tint
+    debug_cc.sprites[directions].layers[1].tint = tint
+    debug_cc.sprites[directions].layers[1].hr_version.tint = tint
+    debug_dc.sprites[directions].layers[1].tint = tint
+    debug_dc.sprites[directions].layers[1].hr_version.tint = tint
+end
+
+data:extend { ac, cc, dc, debug_ac, debug_cc, debug_dc }

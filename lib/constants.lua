@@ -53,6 +53,22 @@ const.filter_combinator_name_packed = const:with_prefix('filter-combinator-packe
 const.internal_ac_name = const:with_prefix('filter-combinator-ac')
 const.internal_cc_name = const:with_prefix('filter-combinator-cc')
 const.internal_dc_name = const:with_prefix('filter-combinator-dc')
+const.internal_debug_ac_name = const:with_prefix('filter-combinator-debug-ac')
+const.internal_debug_cc_name = const:with_prefix('filter-combinator-debug-cc')
+const.internal_debug_dc_name = const:with_prefix('filter-combinator-debug-dc')
+
+const.entity_maps = {
+   standard = {
+       ac = const.internal_ac_name,
+       cc = const.internal_cc_name,
+       dc = const.internal_dc_name,
+   },
+   debug = {
+       ac = const.internal_debug_ac_name,
+       dc = const.internal_debug_dc_name,
+       cc = const.internal_debug_cc_name,
+   }
+}
 
 -- localization
 const.fc_entity_name = 'entity-name.' .. const.filter_combinator_name
