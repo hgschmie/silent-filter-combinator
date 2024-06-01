@@ -19,18 +19,25 @@ local function onEntityDeleted(event)
 end
 
 --- @param event EventData.on_entity_cloned
-local function onEntityCloned(event)
+local function onMainEntityCloned(event)
     -- Space Exploration Support
-    if (not (event.source and event.source.valid and event.destination and event.destination.valid)) then
-        return
-    end
+    if not (Is.Valid(event.source) and Is.Valid(event.destination)) then return end
 
-    local src = event.source
-    local dst = event.destination
+    local src_data = This.fico:entity(event.source.unit_number)
+    if not src_data then return end
 
-    if string.sub(src.name, 1, const.name_prefix_len) ~= const.filter_combinator_name then return end
+    local tags = { fc_config = src_data.config } -- clone the config from the src to the destination
 
-    FiCo.clone_entity(src, dst)
+    This.fico:create(event.destination, nil, tags)
+end
+
+local function onInternalEntityCloned(event)
+    -- Space Exploration Support
+    if not (Is.Valid(event.source) and Is.Valid(event.destination)) then return end
+
+    -- delete the destination entity, it is not needed as the internal structure of the 
+    -- filter combinator is recreated when the main entity is cloned
+    event.destination.destroy()
 end
 
 
@@ -166,22 +173,45 @@ end
 
 Event.on_nth_tick(301, onNthTick)
 
-local create_names = { [const.filter_combinator_name] = true , [const.filter_combinator_name_packed] = true }
+local main_names = { [const.filter_combinator_name] = true, [const.filter_combinator_name_packed] = true }
+
+-- all internal entities
+local internal_names = {
+    [const.internal_ac_name] = true,
+    [const.internal_cc_name] = true,
+    [const.internal_dc_name] = true,
+    [const.internal_debug_ac_name] = true,
+    [const.internal_debug_cc_name] = true,
+    [const.internal_debug_dc_name] = true,
+}
+
 local function match_main_entity(ev, pattern)
-    local entity = ev.created_entity
-    return create_names[entity.name]
+    local entity = ev and (ev.created_entity or ev.entity)
+    return entity.name == const.filter_combinator_name
+end
+
+local function match_main_entities(ev, pattern)
+    local entity = ev and (ev.created_entity or ev.entity)
+    return main_names[entity.name]
+end
+
+local function match_internal_entities(ev, pattern)
+    local entity = ev and (ev.created_entity or ev.entity)
+    return internal_names[entity.name]
 end
 
 -- loop works around https://github.com/Afforess/Factorio-Stdlib/pull/164
 for _, event in pairs { defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive } do
-    Event.register(event, onEntityCreated, match_main_entity)
+    Event.register(event, onEntityCreated, match_main_entities)
 end
 
 for _, event in pairs { defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died } do
     Event.register(event, onEntityDeleted)
 end
 
-Event.register(defines.events.on_entity_cloned, onEntityCloned)
+Event.register(defines.events.on_entity_cloned, onMainEntityCloned, match_main_entities)
+Event.register(defines.events.on_entity_cloned, onInternalEntityCloned, match_internal_entities)
+
 Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted)
 
 Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
