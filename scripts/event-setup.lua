@@ -11,7 +11,7 @@ local const = require('lib.constants')
 
 --- @param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive
 local function onEntityCreated(event)
-    This.fico:create(event.created_entity)
+    This.fico:create(event.created_entity, event.player_index)
 end
 
 local function onEntityDeleted(event)

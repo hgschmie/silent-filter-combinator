@@ -133,6 +133,7 @@ end
 ------------------------------------------------------------------------
 
 ---@param fc_entity FilterCombinatorData
+---@param player_index integer?
 ---@return LuaEntity all_signals
 ---@return integer all_signals_count
 function FiCo:getAllSignalsConstantCombinator(fc_entity)
@@ -153,7 +154,7 @@ function FiCo:getAllSignalsConstantCombinator(fc_entity)
                 global.all_signals_count = nil
             end
 
-            global.all_signals = create_internal_entity(fc_entity, const.internal_cc_name)
+            global.all_signals = create_internal_entity { entity = fc_entity, type = 'cc', ignore = true }
             local all_signals_behavior = global.all_signals.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
             global.all_signals_count = all_signals_behavior.signals_count
             add_all_signals(all_signals_behavior)
@@ -166,14 +167,37 @@ function FiCo:getAllSignalsConstantCombinator(fc_entity)
     return self.all_signals, self.all_signals_count
 end
 
+function FiCo:clearAllSignalsConstantCombinator()
+    if self.all_signals then
+        self.all_signals.destroy()
+        self.all_signals = nil
+    end
+    if global.all_signals then
+        global.all_signals.destroy()
+        global_all_signals = nil
+    end
+end
+
 ------------------------------------------------------------------------
 
-create_internal_entity = function (fc_entity, proto)
+create_internal_entity = function(cfg)
+    local fc_entity = cfg.entity
+    local type = cfg.type
+    local x = cfg.x or 0
+    local y = cfg.y or 0
+    local ignore = cfg.ignore or false
+    local player_index = cfg.player_index
+
+    -- ignored combinators are always invisible
+    local comb_visible = (not ignore) and Mod.settings:player(player_index).comb_visible
+
+    local entity_map = const.entity_maps[comb_visible and 'debug' or 'standard']
+
     local main = fc_entity.main
     ---@type LuaEntity
     local sub_entity = main.surface.create_entity {
-        name = proto,
-        position = main.position,
+        name = entity_map[type],
+        position = { x = main.position.x + (x or 0), y = main.position.y + (y or 0) },
         direction = main.direction,
         force = main.force,
 
@@ -182,31 +206,17 @@ create_internal_entity = function (fc_entity, proto)
         move_stuck_players = true,
     }
 
-    fc_entity.entities[sub_entity.unit_number] = sub_entity
+    sub_entity.minable = false
+    sub_entity.destructible = false
+
+    if not ignore then
+        fc_entity.entities[sub_entity.unit_number] = sub_entity
+    end
 
     return sub_entity
 end
 
---- @param fc_entity FilterCombinatorData
-local function create_sub_entities(fc_entity)
-    fc_entity.ref.cc = create_internal_entity(fc_entity, const.internal_cc_name)
-    fc_entity.ref.ex = create_internal_entity(fc_entity, const.internal_cc_name)
-
-    fc_entity.ref.ccf = create_internal_entity(fc_entity, const.internal_dc_name)
-
-    fc_entity.ref.out = create_internal_entity(fc_entity, const.internal_ac_name)
-    fc_entity.ref.inv = create_internal_entity(fc_entity, const.internal_ac_name)
-
-    fc_entity.ref.a1 = create_internal_entity(fc_entity, const.internal_ac_name)
-    fc_entity.ref.a2 = create_internal_entity(fc_entity, const.internal_ac_name)
-    fc_entity.ref.a3 = create_internal_entity(fc_entity, const.internal_ac_name)
-    fc_entity.ref.a4 = create_internal_entity(fc_entity, const.internal_ac_name)
-
-    fc_entity.ref.d1 = create_internal_entity(fc_entity, const.internal_dc_name)
-    fc_entity.ref.d2 = create_internal_entity(fc_entity, const.internal_dc_name)
-    fc_entity.ref.d3 = create_internal_entity(fc_entity, const.internal_dc_name)
-    fc_entity.ref.d4 = create_internal_entity(fc_entity, const.internal_dc_name)
-end
+------------------------------------------------------------------------
 
 local signal_each = { type = 'virtual', name = 'signal-each' }
 
@@ -302,11 +312,12 @@ end
 --- Creates a new entity from the main entity, registers with the mod
 --- and configures it.
 --- @param main LuaEntity
+--- @param player_index integer?
 --- @param tags Tags?
-function FiCo:create(main, tags)
+function FiCo:create(main, player_index, tags)
     if not Is.Valid(main) then return end
 
-    local entity_id = main.unit_number
+    local entity_id = main.unit_number --[[@as integer]]
 
     assert(self:entity(entity_id) == nil)
 
@@ -323,8 +334,15 @@ function FiCo:create(main, tags)
         entities = { [entity_id] = main, },
         ref = { main = main },
     }
-
-    create_sub_entities(fc_entity)
+    -- create sub-entities
+    for _, cfg in pairs(sub_entities) do
+        fc_entity.ref[cfg.id] = create_internal_entity {
+            entity = fc_entity,
+            type = cfg.type,
+            x = cfg.x,
+            y = cfg.y,
+            player_index = player_index }
+    end
 
     local all_signals = self:getAllSignalsConstantCombinator(fc_entity)
     fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
