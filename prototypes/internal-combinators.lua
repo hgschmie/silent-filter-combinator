@@ -96,12 +96,18 @@ cc.selectable_in_game = false
 -- PrototypeBase
 
 -- for debugging, add a tint to make them more visible
-local debug_ac = table.deepcopy(data.raw['arithmetic-combinator']['arithmetic-combinator']) --[[@as data.ConstantCombinatorPrototype]]
+local debug_ac = table.deepcopy(data.raw['arithmetic-combinator']['arithmetic-combinator']) --[[@as data.ArithmeticCombinatorPrototype]]
 debug_ac.name = const.internal_debug_ac_name
+debug_ac.energy_source = { type = 'void' }
+debug_ac.active_energy_usage = '0.001W'
+
 local debug_cc = table.deepcopy(data.raw['constant-combinator']['constant-combinator']) --[[@as data.ConstantCombinatorPrototype]]
 debug_cc.name = const.internal_debug_cc_name
-local debug_dc = table.deepcopy(data.raw['decider-combinator']['decider-combinator']) --[[@as data.ConstantCombinatorPrototype]]
+
+local debug_dc = table.deepcopy(data.raw['decider-combinator']['decider-combinator']) --[[@as data.DeciderCombinatorPrototype]]
 debug_dc.name = const.internal_debug_dc_name
+debug_dc.energy_source = { type = 'void' }
+debug_dc.active_energy_usage = '0.001W'
 
 local tint = { r = 0, g = 0.8, b = 0.4, a = 1}
 for _, directions in pairs({'north', 'south','east','west'}) do

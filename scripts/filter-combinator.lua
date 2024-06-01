@@ -477,7 +477,7 @@ function FiCo:create(main, player_index, tags)
     local fc_entity = {
         main = main,
         config = table.deepcopy(config), -- config may refer to the signal object in parent or default config.
-        entities = { [entity_id] = main, },
+        entities = {},
         ref = { main = main },
     }
     -- create sub-entities
@@ -487,7 +487,8 @@ function FiCo:create(main, player_index, tags)
             type = cfg.type,
             x = cfg.x,
             y = cfg.y,
-            player_index = player_index }
+            player_index = player_index
+        }
     end
 
     local all_signals = self:getAllSignalsConstantCombinator(fc_entity)
@@ -539,6 +540,7 @@ function FiCo:rewire_entity(fc_entity)
 
     local fc_config = fc_entity.config
 
+    -- disconnect wires in case the combinator was turned off
     for _, cfg in pairs(wiring.disconnect1) do
         disconnect_wire(fc_entity, cfg)
     end
@@ -549,14 +551,18 @@ function FiCo:rewire_entity(fc_entity)
 
     local cc_control = fc_entity.ref.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
     cc_control.enabled = fc_config.enabled
-    cc_control.parameters = table.deepcopy(fc_config.signals)
 
     if not fc_config.enabled then return end
 
+    -- setup the signals for the cc
+    cc_control.parameters = table.deepcopy(fc_config.signals)
+
+    -- disconnect wires for rewiring
     for _, cfg in pairs(wiring.disconnect2) do
         disconnect_wire(fc_entity, cfg)
     end
 
+    -- now rewire
     local rewire_cfg
     if fc_config.include_mode and fc_config.use_wire then
         -- all inputs on a wire

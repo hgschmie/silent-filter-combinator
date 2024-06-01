@@ -4,6 +4,8 @@
 
 local Event = require('__stdlib__/stdlib/event/event')
 local Is = require('__stdlib__/stdlib/utils/is')
+local Player = require('__stdlib__/stdlib/event/player')
+local table = require('__stdlib__/stdlib/utils/table')
 
 local const = require('lib.constants')
 
@@ -17,6 +19,8 @@ end
 local function onEntityDeleted(event)
     This.fico:destroy(event.entity.unit_number)
 end
+
+--------------------------------------------------------------------------------
 
 --- @param event EventData.on_entity_cloned
 local function onMainEntityCloned(event)
@@ -40,25 +44,20 @@ local function onInternalEntityCloned(event)
     event.destination.destroy()
 end
 
+--------------------------------------------------------------------------------
 
 local function onEntitySettingsPasted(event)
-    local pl = game.get_player(event.player_index)
-    if not pl or not pl.valid or pl.force ~= event.source.force or pl.force ~= event.destination.force then
-        return
-    end
-    if event.source.name ~= const.filter_combinator_name or event.destination.name ~= const.filter_combinator_name then
-        return
-    end
-    local dest_idx = global.sil_filter_combinators[event.destination.unit_number]
-    local source_idx = global.sil_filter_combinators[event.source.unit_number]
-    if not dest_idx or not source_idx then
-        return
-    end
-    local src = global.sil_fc_data[source_idx].cc
-    local dst = global.sil_fc_data[dest_idx].cc
-    if src and src.valid and src.force == pl.force and dst and dst.valid and dst.force == pl.force then
-        dst.copy_settings(src)
-    end
+    local player, player_data = Player.get(event.player_index)
+
+    if not (Is.Valid(player) and player.force == event.source.force and player.force == event.destination.force) then return end
+
+    local src_fc_entity = This.fico:entity(event.source.unit_number)
+    local dst_fc_entity = This.fico:entity(event.destination.unit_number)
+
+    if not (src_fc_entity and dst_fc_entity) then return end
+
+    dst_fc_entity.config = table.deepcopy(src_fc_entity.config)
+    This.fico:rewire_entity(dst_fc_entity)
 end
 
 --------------------------------------------------------------------------------
@@ -192,6 +191,9 @@ local internal_names = {
 }
 
 local function match_main_entity(ev, pattern)
+    if ev.source and ev.destination then
+        return ev.source.name == const.filter_combinator_name and ev.destination.name == const.filter_combinator_name
+    end
     local entity = ev and (ev.created_entity or ev.entity)
     return entity.name == const.filter_combinator_name
 end
@@ -218,7 +220,7 @@ end
 Event.register(defines.events.on_entity_cloned, onMainEntityCloned, match_main_entities)
 Event.register(defines.events.on_entity_cloned, onInternalEntityCloned, match_internal_entities)
 
-Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted)
+Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, match_main_entity)
 
 Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
 Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
