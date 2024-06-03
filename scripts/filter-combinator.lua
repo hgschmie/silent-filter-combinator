@@ -129,7 +129,7 @@ local function create_internal_entity(cfg)
         move_stuck_players = true,
     }
 
-    assert(sub_entity, 'Could not create sub entity ' .. serpent.line(cfg))
+    assert(sub_entity)
 
     sub_entity.minable = false
     sub_entity.destructible = false
