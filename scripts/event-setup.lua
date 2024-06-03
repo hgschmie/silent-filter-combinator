@@ -7,19 +7,79 @@ local Is = require('__stdlib__/stdlib/utils/is')
 local Player = require('__stdlib__/stdlib/event/player')
 local table = require('__stdlib__/stdlib/utils/table')
 
+local Util = require('framework.util')
+
 local const = require('lib.constants')
 
+--------------------------------------------------------------------------------
+-- manage ghost building (robot building)
+--------------------------------------------------------------------------------
+
+local function onGhostEntityCreated(event)
+    local entity = event and (event.created_entity or event.entity)
+    script.register_on_entity_destroyed(entity)
+
+    -- if an entity ghost was placed, register information to configure
+    -- an entity if it is placed over the ghost
+    ---@type table<integer, ModGhost>
+    local ghosts = global.ghosts or {}
+
+    ---@class ModGhost
+    ---@field position MapPosition
+    ---@field orientation RealOrientation
+    ---@field tags Tags?
+    ---@field player_index integer
+    ghosts[entity.unit_number] = {
+        position = entity.position,
+        orientation = entity.orientation,
+        tags = entity.tags,
+        player_index = event.player_index
+    }
+
+    global.ghosts = ghosts
+end
+
+local function onGhostEntityDestroyed(event)
+    if global.ghosts and global.ghosts[event.unit_number] then
+        global.ghosts[event.unit_number] = nil
+    end
+end
+
+--------------------------------------------------------------------------------
+-- entity create / destroy
 --------------------------------------------------------------------------------
 
 --- @param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive
 local function onEntityCreated(event)
-    This.fico:create(event.created_entity, event.player_index)
+    local entity = event and (event.created_entity or event.entity)
+
+    local player_index = event.player_index
+    local tags = event.tags
+
+    -- see if this entity replaces a ghost
+    if global.ghosts then
+        for _, ghost in pairs(global.ghosts) do
+            if entity.position.x == ghost.position.x
+            and entity.position.y == ghost.position.y
+            and entity.orientation == ghost.orientation then
+                player_index = player_index or ghost.player_index
+                tags = tags or ghost.tags
+                break
+            end
+        end
+    end
+
+    This.fico:create(entity, player_index, tags)
 end
 
-local function onEntityDeleted(event)
-    This.fico:destroy(event.entity.unit_number)
+local function onEntityDestroyed(event)
+    local entity = event and (event.created_entity or event.entity)
+
+    This.fico:destroy(entity.unit_number)
 end
 
+--------------------------------------------------------------------------------
+-- Entity cloning
 --------------------------------------------------------------------------------
 
 --- @param event EventData.on_entity_cloned
@@ -39,11 +99,13 @@ local function onInternalEntityCloned(event)
     -- Space Exploration Support
     if not (Is.Valid(event.source) and Is.Valid(event.destination)) then return end
 
-    -- delete the destination entity, it is not needed as the internal structure of the 
+    -- delete the destination entity, it is not needed as the internal structure of the
     -- filter combinator is recreated when the main entity is cloned
     event.destination.destroy()
 end
 
+--------------------------------------------------------------------------------
+-- Entity settings pasting
 --------------------------------------------------------------------------------
 
 local function onEntitySettingsPasted(event)
@@ -57,88 +119,90 @@ local function onEntitySettingsPasted(event)
     if not (src_fc_entity and dst_fc_entity) then return end
 
     dst_fc_entity.config = table.deepcopy(src_fc_entity.config)
-    This.fico:rewire_entity(dst_fc_entity)
+    This.fico:reconfigure(dst_fc_entity)
 end
 
 --------------------------------------------------------------------------------
+-- Blueprint / copy&paste management
+--------------------------------------------------------------------------------
 
---- @param bp LuaItemStack
-local function save_to_blueprint(data, bp)
-    if not data then
-        return
-    end
-    if #data < 1 then
-        return
-    end
-    if not bp or not bp.is_blueprint_setup() then
-        return
-    end
-    local entities = bp.get_blueprint_entities()
-    if not entities or #entities < 1 then
-        return
-    end
-    for _, unit in pairs(data) do
-        local idx = global.sil_filter_combinators[unit]
-        --- @type LuaEntity
-        local src = global.sil_fc_data[idx].cc
-        local main = global.sil_fc_data[idx].main
+--- @param blueprint LuaItemStack
+--- @param entities LuaEntity[]
+local function save_to_blueprint(entities, blueprint)
+    if not entities or #entities < 1 then return end
+    if not (blueprint and blueprint.is_blueprint_setup()) then return end
 
-        local behavior = src.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-        for __, e in ipairs(entities) do
-            -- Because LUA is a fucking useless piece of shit we cannot compare values that are tables... because you know why the fuck would you want to....
-            -- if e.position == main.position then
-            if e.position.x == main.position.x and e.position.y == main.position.y then
-                bp.set_blueprint_entity_tag(__, 'config', global.sil_fc_data[idx].config)
-                bp.set_blueprint_entity_tag(__, 'params', behavior.parameters)
-                break
+    -- blueprints hold a set of entities without any identifying information besides
+    -- the position of the entity. Build a double-index map that allows finding the
+    -- index in the blueprint entity list by x/y coordinate.
+    local blueprint_index = {}
+    for idx, blueprint_entity in pairs(blueprint.get_blueprint_entities()) do
+        local x_map = blueprint_index[blueprint_entity.position.x] or {}
+        assert(not (x_map[blueprint_entity.position.y]))
+        x_map[blueprint_entity.position.y] = idx
+        blueprint_index[blueprint_entity.position.x] = x_map
+    end
+
+    -- all entities here are filter combinators. Find their index in the blueprint
+    -- and assign the config as a tag.
+    for _, main in pairs(entities) do
+        if Is.Valid(main) then
+            local fc_entity = This.fico:entity(main.unit_number)
+            if fc_entity then
+                local idx = (blueprint_index[main.position.x] or {})[main.position.y]
+                if idx then
+                    blueprint.set_blueprint_entity_tag(idx, 'fc_config', fc_entity.config)
+                end
             end
         end
     end
 end
 
+local function has_valid_cursor_stack(player)
+    if not Is.Valid(player) then return false end
+    if not player.cursor_stack then return false end
+
+    return (player.cursor_stack.valid_for_read and player.cursor_stack.name == 'blueprint')
+end
+
+
 --- @param event EventData.on_player_setup_blueprint
 local function onPlayerSetupBlueprint(event)
-    if not event.area then
-        return
-    end
+    if not event.area then return end
 
-    local player = game.players[event.player_index]
-    local entities = player.surface.find_entities_filtered { area = event.area, force = player.force }
-    local result = {}
-    for _, ent in pairs(entities) do
-        if ent.name == const.filter_combinator_name then
-            table.insert(result, ent.unit_number)
-        end
-    end
-    if #result < 1 then
-        return
-    end
-    if player.cursor_stack.valid_for_read and player.cursor_stack.name == 'blueprint' then
-        save_to_blueprint(result, player.cursor_stack)
+    local player, player_data = Player.get(event.player_index)
+
+    local entities = player.surface.find_entities_filtered {
+        area = event.area,
+        force = player.force,
+        name = const.filter_combinator_name,
+    }
+    -- nothing in there for us
+    if #entities < 1 then return end
+
+    if has_valid_cursor_stack(player) then
+        save_to_blueprint(entities, player.cursor_stack)
     else
-        -- Player is editing the blueprint, no access for us yet. Continue this in onPlayerConfiguredBlueprint
-        if not global.sil_fc_blueprint_data then
-            global.sil_fc_blueprint_data = {}
-        end
-        global.sil_fc_blueprint_data[event.player_index] = result
+        -- Player is editing the blueprint, no access for us yet.
+        -- onPlayerConfiguredBlueprint picks this up and stores it.
+        player_data.fc_blueprint_data = entities
     end
 end
 
 --- @param event EventData.on_player_configured_blueprint
 local function onPlayerConfiguredBlueprint(event)
-    if not global.sil_fc_blueprint_data then
-        global.sil_fc_blueprint_data = {}
-    end
-    local player = game.players[event.player_index]
+    local player, player_data = Player.get(event.player_index)
 
-    if player and player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.name == 'blueprint' and global.sil_fc_blueprint_data[event.player_index] then
-        save_to_blueprint(global.sil_fc_blueprint_data[event.player_index], player.cursor_stack)
-    end
-    if global.sil_fc_blueprint_data[event.player_index] then
-        global.sil_fc_blueprint_data[event.player_index] = nil
+    if player_data.fc_blueprint_data then
+        if has_valid_cursor_stack(player) and player_data.fc_blueprint_data then
+            save_to_blueprint(player_data.fc_blueprint_data, player.cursor_stack)
+        end
+        player_data.fc_blueprint_data = nil
     end
 end
 
+--------------------------------------------------------------------------------
+-- Configuration changes (runtime and startup)
 --------------------------------------------------------------------------------
 
 --- @param changed ConfigurationChangedData?
@@ -146,102 +210,66 @@ local function onConfigurationChanged(changed)
     if This and This.fico then
         This.fico:clearAllSignalsConstantCombinator()
 
-        for _,fc_entity in pairs(This.fico:entities()) do
+        for _, fc_entity in pairs(This.fico:entities()) do
             local all_signals = This.fico:getAllSignalsConstantCombinator(fc_entity)
             fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
         end
     end
 end
 
-local function onRuntimeModSettingChanged(ev)
-    Mod.settings:flush()
-    log(string.format("setting now: %s/%s",tostring(Mod.settings:player(ev.player_index).comb_visible), tostring(settings['player'][Mod.PREFIX .. "comb-visible"].value)))
-
-    onConfigurationChanged()
-end
-
+--------------------------------------------------------------------------------
+-- Event ticker
 --------------------------------------------------------------------------------
 
 local function onNthTick(event)
     if This.fico:totalCount() <= 0 then return end
+
     for main_unit_number, fc_entity in pairs(This.fico:entities()) do
         if not Is.Valid(fc_entity.main) then
             -- most likely cc has removed the main entity
             This.fico:destroy(main_unit_number)
         else
-            This.fico:update_entity(fc_entity)
+            This.fico:tick(fc_entity)
         end
     end
 end
 
 --------------------------------------------------------------------------------
+-- event registration
+--------------------------------------------------------------------------------
 
-Event.on_nth_tick(301, onNthTick)
+local match_main_entities = Util.create_event_entity_matcher('name', const.main_entity_names)
+local match_internal_entities = Util.create_event_entity_matcher('name', const.internal_entity_names)
+local match_ghost_entities = Util.create_event_ghost_entity_matcher(const.main_entity_names)
 
-local main_names = { [const.filter_combinator_name] = true, [const.filter_combinator_name_packed] = true }
+-- manage ghost building (robot building)
+Util.event_register(const.creation_events, onGhostEntityCreated, match_ghost_entities)
+Event.register(defines.events.on_entity_destroyed, onGhostEntityDestroyed)
 
--- all internal entities
-local internal_names = {
-    [const.internal_ac_name] = true,
-    [const.internal_cc_name] = true,
-    [const.internal_dc_name] = true,
-    [const.internal_debug_ac_name] = true,
-    [const.internal_debug_cc_name] = true,
-    [const.internal_debug_dc_name] = true,
-}
+-- entity create / destroy
+Util.event_register(const.creation_events, onEntityCreated, match_main_entities)
+Util.event_register(const.destruction_events, onEntityDestroyed, match_main_entities)
 
-local function match_main_entity(ev, pattern)
-    if ev.source and ev.destination then
-        return ev.source.name == const.filter_combinator_name and ev.destination.name == const.filter_combinator_name
-    end
-    local entity = ev and (ev.created_entity or ev.entity)
-    return entity.name == const.filter_combinator_name
-end
-
-local function match_main_entities(ev, pattern)
-    local entity = ev and (ev.created_entity or ev.entity)
-    return main_names[entity.name]
-end
-
-local function match_internal_entities(ev, pattern)
-    local entity = ev and (ev.created_entity or ev.entity)
-    return internal_names[entity.name]
-end
-
--- loop works around https://github.com/Afforess/Factorio-Stdlib/pull/164
-for _, event in pairs { defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_revive } do
-    Event.register(event, onEntityCreated, match_main_entities)
-end
-
-for _, event in pairs { defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died } do
-    Event.register(event, onEntityDeleted)
-end
-
+-- Entity cloning
 Event.register(defines.events.on_entity_cloned, onMainEntityCloned, match_main_entities)
 Event.register(defines.events.on_entity_cloned, onInternalEntityCloned, match_internal_entities)
 
-Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, match_main_entity)
+-- Entity settings pasting
+Event.register(defines.events.on_entity_settings_pasted, onEntitySettingsPasted, match_main_entities)
 
+-- Blueprint / copy&paste management
 Event.register(defines.events.on_player_setup_blueprint, onPlayerSetupBlueprint)
 Event.register(defines.events.on_player_configured_blueprint, onPlayerConfiguredBlueprint)
 
+-- Configuration changes (runtime and startup)
 Event.on_configuration_changed(onConfigurationChanged)
-Event.register(defines.events.on_runtime_mod_setting_changed, onRuntimeModSettingChanged)
+Event.register(defines.events.on_runtime_mod_setting_changed, onConfigurationChanged)
 
--- events.register(defines.events.on_tick, run)
--- events.register(defines.events.on_player_cursor_stack_changed, ensure_internal_connections)
--- -- Config change
--- events.register(defines.events.on_runtime_mod_setting_changed, cfg_update)
--- -- Creation
--- events.register(defines.events.on_entity_cloned, create, event_filter, "destination")
--- events.register(defines.events.script_raised_built, create, event_filter)
--- events.register(defines.events.script_raised_revive, create, event_filter)
--- -- Rotation & settings pasting
--- events.register(defines.events.on_player_rotated_entity, rotate, event_filter)
--- -- Removal
--- events.register(defines.events.on_robot_mined_entity, remove, event_filter)
--- events.register(defines.events.script_raised_destroy, remove, event_filter)
--- -- Batch removal
--- events.register(defines.events.on_chunk_deleted, purge)
--- events.register(defines.events.on_surface_cleared, purge)
--- events.register(defines.events.on_surface_deleted, purge)
+-- Event ticker
+Event.on_nth_tick(301, onNthTick)
+
+
+
+
+
+

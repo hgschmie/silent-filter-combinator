@@ -2,36 +2,23 @@ local Event = require('__stdlib__/stdlib/event/event')
 local Player = require('__stdlib__/stdlib/event/player')
 local table = require('__stdlib__/stdlib/utils/table')
 
+local Util = require('framework.util')
+
 local const = require('lib.constants')
 
 --- @class ModGui
 local ModGui = {}
 
-ModGui.STATUS_SPRITES = {}
-ModGui.STATUS_NAMES = {}
-
---- Status sprite names
-local RED = 'utility/status_not_working'
-local GREEN = 'utility/status_working'
-local YELLOW = 'utility/status_yellow'
-
-ModGui.STATUS_SPRITES[defines.entity_status.working] = GREEN
-ModGui.STATUS_SPRITES[defines.entity_status.normal] = GREEN
-ModGui.STATUS_SPRITES[defines.entity_status.no_power] = RED
-ModGui.STATUS_SPRITES[defines.entity_status.low_power] = YELLOW
-ModGui.STATUS_SPRITES[defines.entity_status.disabled_by_control_behavior] = RED
-ModGui.STATUS_SPRITES[defines.entity_status.disabled_by_script] = RED
-ModGui.STATUS_SPRITES[defines.entity_status.marked_for_deconstruction] = RED
-ModGui.STATUS_SPRITES[defines.entity_status.disabled] = RED
-
-for name, idx in pairs(defines.entity_status) do
-    ModGui.STATUS_NAMES[idx] = 'entity-status.' .. string.gsub(name, '_', '-')
-end
-
-----------------------------------------------------------------------------------------------------
-
 -- callback predefines
 local onWindowClosed, onSwitchEnabled, onSwitchExclusive, onToggleWireMode, onSwitchRedWire, onSwitchGreenWire
+-- forward declarations
+local gui_updater, update_gui_state
+
+
+
+----------------------------------------------------------------------------------------------------
+-- UI definition
+----------------------------------------------------------------------------------------------------
 
 --- @param fc_entity FilterCombinatorData
 --- @return FrameworkGuiElemDef ui
@@ -249,7 +236,19 @@ end
 -- UI Callbacks
 ----------------------------------------------------------------------------------------------------
 
-local gui_updater
+---@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
+---@return FilterCombinatorData? fc_entity
+local function locate_config(event)
+    local player, player_data = Player.get(event.player_index)
+    if not (player_data and player_data.fc_gui) then return nil end
+
+    local fc_entity = This.fico:entity(player_data.fc_gui.fc_id)
+    if not fc_entity then return nil end
+
+    return fc_entity
+end
+
+----------------------------------------------------------------------------------------------------
 
 --- close the UI (button or shortcut key)
 ---
@@ -274,20 +273,6 @@ onWindowClosed = function(event)
 end
 
 ----------------------------------------------------------------------------------------------------
-
-local update_gui_state -- forward declaration
-
----@param event EventData.on_gui_switch_state_changed|EventData.on_gui_checked_state_changed|EventData.on_gui_elem_changed
----@return FilterCombinatorData? fc_entity
-local function locate_config(event)
-    local player, player_data = Player.get(event.player_index)
-    if not (player_data and player_data.fc_gui) then return nil end
-
-    local fc_entity = This.fico:entity(player_data.fc_gui.fc_id)
-    if not fc_entity then return nil end
-
-    return fc_entity
-end
 
 local on_off_values = {
     left = false,
@@ -325,6 +310,8 @@ onSwitchExclusive = function(event)
     fc_entity.config.include_mode = incl_excl_values[event.element.switch_state]
 end
 
+----------------------------------------------------------------------------------------------------
+
 --- switch green wire
 --- @param event EventData.on_gui_checked_state_changed
 onSwitchGreenWire = function(event)
@@ -333,6 +320,8 @@ onSwitchGreenWire = function(event)
 
     fc_entity.config.filter_wire = defines.wire_type.green
 end
+
+----------------------------------------------------------------------------------------------------
 
 --- switch red wire
 --- @param event EventData.on_gui_checked_state_changed
@@ -343,6 +332,7 @@ onSwitchRedWire = function(event)
     fc_entity.config.filter_wire = defines.wire_type.red
 end
 
+----------------------------------------------------------------------------------------------------
 
 --- @param event  EventData.on_gui_checked_state_changed
 onToggleWireMode = function(event)
@@ -351,6 +341,8 @@ onToggleWireMode = function(event)
 
     fc_entity.config.use_wire = event.element.state
 end
+
+----------------------------------------------------------------------------------------------------
 
 --- @param event EventData.on_gui_elem_changed
 onSelectSignal = function(event)
@@ -368,6 +360,8 @@ onSelectSignal = function(event)
     }
 end
 
+----------------------------------------------------------------------------------------------------
+-- create grid buttons for "all signals" constant combinator
 ----------------------------------------------------------------------------------------------------
 
 ---@param fc_entity FilterCombinatorData
@@ -403,6 +397,10 @@ local function make_grid_buttons(fc_entity)
     return list
 end
 
+----------------------------------------------------------------------------------------------------
+-- GUI state updater
+----------------------------------------------------------------------------------------------------
+
 ---@param gui FrameworkGui?
 ---@param fc_entity FilterCombinatorData?
 update_gui_state = function(gui, fc_entity)
@@ -416,10 +414,10 @@ update_gui_state = function(gui, fc_entity)
     on_off.switch_state = values_on_off[fc_config.enabled]
 
     local lamp = gui:find_element('lamp')
-    lamp.sprite = ModGui.STATUS_SPRITES[entity_status]
+    lamp.sprite = Util.STATUS_SPRITES[entity_status]
 
     local status = gui:find_element('status')
-    status.caption = { ModGui.STATUS_NAMES[entity_status] }
+    status.caption = { Util.STATUS_NAMES[entity_status] }
 
     local incl_excl = gui:find_element('incl-excl')
     incl_excl.switch_state = values_incl_excl[fc_config.include_mode]
@@ -439,6 +437,10 @@ update_gui_state = function(gui, fc_entity)
     gui:replace_children('signals', slot_buttons)
 end
 
+----------------------------------------------------------------------------------------------------
+-- Event ticker
+----------------------------------------------------------------------------------------------------
+
 ---@param fc_gui FilterCombinatorGui
 gui_updater = function(ev, fc_gui)
     local fc_entity = This.fico:entity(fc_gui.fc_id)
@@ -447,15 +449,17 @@ gui_updater = function(ev, fc_gui)
         return
     end
 
-    This.fico:update_entity(fc_entity)
+    This.fico:tick(fc_entity)
 
     if not (fc_gui.last_config and table.compare(fc_gui.last_config, fc_entity.config)) then
-        This.fico:rewire_entity(fc_entity)
+        This.fico:reconfigure(fc_entity)
         update_gui_state(fc_gui.gui, fc_entity)
         fc_gui.last_config = table.deepcopy(fc_entity.config)
     end
 end
 
+----------------------------------------------------------------------------------------------------
+-- open gui handler
 ----------------------------------------------------------------------------------------------------
 
 --- @param event EventData.on_gui_opened
@@ -496,12 +500,12 @@ local function onGuiOpened(event)
     player.opened = gui.root
 end
 
-local gui_names = { [const.filter_combinator_name] = true }
-local function match_gui_entity(event)
-    local entity = event and (event.created_entity or event.entity) --[[@as LuaEntity]]
-    return entity and gui_names[entity.name]
-end
+----------------------------------------------------------------------------------------------------
+-- Event registration
+----------------------------------------------------------------------------------------------------
 
-Event.on_event(defines.events.on_gui_opened, onGuiOpened, match_gui_entity)
+local match_main_entities = Util.create_event_entity_matcher('name', const.main_entity_names)
+
+Event.on_event(defines.events.on_gui_opened, onGuiOpened, match_main_entities)
 
 return ModGui

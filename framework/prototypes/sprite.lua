@@ -1,8 +1,6 @@
 ----------------------------------------------------------------------------------------------------
--- sprites supplied by the framework
+-- sprites supplied by the framework - from flib
 ----------------------------------------------------------------------------------------------------
-
-local FrameworkPrototypesSprite = {}
 
 local indicators = {}
 for i, color in ipairs { 'black', 'white', 'red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink' } do
@@ -15,7 +13,10 @@ for i, color in ipairs { 'black', 'white', 'red', 'orange', 'yellow', 'green', '
         flags = { 'icon' },
     }
 end
+
 data:extend(indicators)
+
+----------------------------------------------------------------------------------------------------
 
 local fab = Mod.ROOT .. '/framework/graphics/frame-action-icons.png'
 

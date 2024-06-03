@@ -1,3 +1,7 @@
+----------------------------------------------------------------------------------------------------
+-- framework settings support -- inspired by flib
+----------------------------------------------------------------------------------------------------
+
 local table = require('__stdlib__/stdlib/utils/table')
 
 ----------------------------------------------------------------------------------------------------
@@ -58,8 +62,7 @@ local settings_table = {
       values = {},
       load_value = function(name, player_index)
          if player_index then
-            local s = settings.get_player_settings(player_index)
-            return s[name]
+            return settings.get_player_settings(player_index)[name]
          else
             return settings['player'][name]
          end
@@ -116,13 +119,12 @@ end
 
 --- Access the mod's settings
 ---@param setting_type string Setting setting_type. Valid values are "startup", "runtime" and "player"
----@param reload boolean? Reload the settings from the game?
 ---@param player_index integer? The current player index.
 ---@return table<string, (integer|boolean|double|string|Color)?> result
-function Settings:load(setting_type, reload, player_index)
+function Settings:get_settings(setting_type, player_index)
    local st = settings_table[setting_type]
 
-   if (not st:get_values(player_index) or reload) then
+   if (not st:get_values(player_index)) then
       local definition = self.definitions[setting_type]
       local values = {}
       st:set_values(values, player_index)
@@ -141,32 +143,41 @@ function Settings:load(setting_type, reload, player_index)
    return st:get_values(player_index) or error('Failed to load ' .. setting_type .. ' settings.')
 end
 
+--- Flushes all cached settings. 
+--- The next access to a setting will reload them from the game.
 function Settings:flush()
    settings_table['player']:clear()
    settings_table['runtime']:clear()
 end
 
---- Access the mod's startup settings.
+--- Access the startup settings.
 ---@return table<string, (integer|boolean|double|string|Color)?> result
 function Settings:startup()
-   return self:load('startup')
+   return self:get_settings('startup')
 end
 
---- Access the mods's runtime settings.
----@param reload boolean? Reload the settings from the game?
+--- Access the runtime settings.
 ---@return table<string, (integer|boolean|double|string|Color)?> result
-function Settings:runtime(reload)
-   return self:load('runtime', reload)
+function Settings:runtime()
+   return self:get_settings('runtime')
 end
 
---- Access the mods's player settings.
+--- Access the player settings. If no player index is given, use the default player settings in settings.player.
 ---@param player_index integer? The current player index.
----@param reload boolean? Reload the settings from the game?
 ---@return table<string, (integer|boolean|double|string|Color)?> result
-function Settings:player(player_index, reload)
-   return self:load('player', reload, player_index)
+function Settings:player(player_index)
+   return self:get_settings('player', player_index)
 end
 
 ----------------------------------------------------------------------------------------------------
+
+if script then
+   local Event = require('__stdlib__/stdlib/event/event')
+
+   -- Runtime settings changed
+   Event.register(defines.events.on_runtime_mod_setting_changed, function()
+      Settings:flush()
+   end)
+end
 
 return Settings

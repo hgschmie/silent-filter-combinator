@@ -1,8 +1,6 @@
 ----------------------------------------------------------------------------------------------------
--- SLOT BUTTON STYLES
+-- styles supplied by the framework - from flib
 ----------------------------------------------------------------------------------------------------
-
-local FrameworkPrototypesStyle = {}
 
 local data_util = require('framework.prototypes.data-util')
 

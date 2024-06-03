@@ -1,20 +1,24 @@
 --
--- Manage GUIs and GUI state
+-- Manage GUIs and GUI state -- loosely inspited by flib
 --
+
+-- only works in runtime mode
+if not script then return end
 
 local Event = require('__stdlib__/stdlib/event/event')
 local Is = require('__stdlib__/stdlib/utils/is')
 
 local FrameworkGui = require('framework.gui')
 
-------------------------------------------------------------------------
 
 --- @class FrameworkGuiManager
---- @field prefix string The prefix for all registered handlers and other global information.
+--- @field GUI_PREFIX string The prefix for all registered handlers and other global information.
 local FrameworkGuiManager = {
-    prefix = Mod.PREFIX .. 'gui-',
+    GUI_PREFIX = Mod.PREFIX .. 'gui-',
 }
 
+------------------------------------------------------------------------
+--
 ------------------------------------------------------------------------
 
 --- @return FrameworkGuiManagerState state Manages GUI state
@@ -58,7 +62,7 @@ function FrameworkGuiManager:dispatch(ev)
 
     -- see if this has the right tags
     local tags = elem.tags --[[@as Tags]]
-    local gui_id = tags[self.prefix .. 'id']
+    local gui_id = tags[self.GUI_PREFIX .. 'id']
 
     local state = self:state()
 
@@ -88,9 +92,9 @@ end
 --- @param existing_elements table<string, LuaGuiElement>? Optional set of existing GUI elements.
 --- @return FrameworkGui framework_gui A framework gui instance
 function FrameworkGuiManager:create_gui(parent, ui_tree, existing_elements)
-    assert(Is.Table(ui_tree) and #ui_tree == 0, "The UI tree must have a single root!")
+    assert(Is.Table(ui_tree) and #ui_tree == 0, 'The UI tree must have a single root!')
     local gui_id = self:create_id()
-    local gui = FrameworkGui.create(gui_id, self.prefix)
+    local gui = FrameworkGui.create(gui_id, self.GUI_PREFIX)
     local state = self:state()
 
     state.guis[gui_id] = gui
@@ -127,7 +131,7 @@ end
 for name, id in pairs(defines.events) do
     if name:sub(1, 7) == 'on_gui_' then
         Event.on_event(id, function(ev)
-            FrameworkGuiManager:dispatch(ev)
+            Mod.gui_manager:dispatch(ev)
         end)
     end
 end

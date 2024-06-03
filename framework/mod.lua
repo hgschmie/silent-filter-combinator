@@ -2,8 +2,8 @@ local Is = require('__stdlib__/stdlib/utils/is')
 
 ----------------------------------------------------------------------------------------------------
 
---- Mod object access point
--- The main global singleton in the mod, defines globally used data and provides access to all
+--- Framework central access point
+-- The framework singleton, provides access to well known constants and the Framework components
 -- other components.
 --- @class FrameworkMod
 --- @field PREFIX string
@@ -70,8 +70,6 @@ function Mod:init(config)
         self.logger:init()
 
         self.gui_manager = require('framework.gui_manager')
-
-        require('framework.event-setup')
     elseif (settings) then
         -- prototype stage
         require('framework.prototype')

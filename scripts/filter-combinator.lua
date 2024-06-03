@@ -4,6 +4,7 @@
 --
 local Is = require('__stdlib__/stdlib/utils/is')
 local table = require('__stdlib__/stdlib/utils/table')
+local Util = require('framework.util')
 
 local const = require('lib.constants')
 
@@ -29,7 +30,7 @@ local default_config = {
 
 --- @param parent_config FilterCombinatorConfig?
 --- @return FilterCombinatorConfig config
-function FiCo:create_config(parent_config)
+local function create_config(parent_config)
     parent_config = parent_config or default_config
 
     local config = {}
@@ -41,6 +42,8 @@ function FiCo:create_config(parent_config)
     return config
 end
 
+------------------------------------------------------------------------
+-- attribute getters/setters
 ------------------------------------------------------------------------
 
 --- Returns the registered total count
@@ -78,13 +81,69 @@ function FiCo:setEntity(entity_id, fc_entity)
 
     if global.fc_data.count < 0 then
         global.fc_data.count = table_size(global.fc_data.fc)
-        log('Filter Combinator count got negative (bug), size is now: ' .. global.fc_data.count)
+        Mod.logger:logf('Filter Combinator count got negative (bug), size is now: %d', global.fc_data.count)
     end
 end
 
 ------------------------------------------------------------------------
+-- create internal entities
+------------------------------------------------------------------------
 
-local create_internal_entity
+---@class FcCreateInternalEntityCfg
+---@field entity FilterCombinatorData
+---@field type string
+---@field ignore boolean?
+---@field player_index integer?
+---@field x integer?
+---@field y integer?
+
+---@param cfg FcCreateInternalEntityCfg
+local function create_internal_entity(cfg)
+    local fc_entity = cfg.entity
+    local type = cfg.type
+
+    local ignore = cfg.ignore or false
+    local player_index = cfg.player_index
+
+    -- ignored combinators are always invisible
+    -- if no player index was passed, combinators are invisible
+    local comb_visible = (not ignore) and (player_index and Mod.settings:player(player_index).comb_visible)
+
+    -- invisible combinators share position with the main unit
+    local x = (comb_visible and cfg.x or 0) or 0
+    local y = (comb_visible and cfg.y or 0) or 0
+
+    local entity_map = const.entity_maps[comb_visible and 'debug' or 'standard']
+
+    local main = fc_entity.main
+
+    ---@type LuaEntity?
+    local sub_entity = main.surface.create_entity {
+        name = entity_map[type],
+        position = { x = main.position.x + x, y = main.position.y + y },
+        direction = main.direction,
+        force = main.force,
+
+        create_build_effect_smoke = false,
+        spawn_decorations = false,
+        move_stuck_players = true,
+    }
+
+    assert(sub_entity, 'Could not create sub entity ' .. serpent.line(cfg))
+
+    sub_entity.minable = false
+    sub_entity.destructible = false
+
+    if not ignore then
+        fc_entity.entities[sub_entity.unit_number] = sub_entity
+    end
+
+    return sub_entity
+end
+
+------------------------------------------------------------------------
+-- "all signals" constant combinator management
+------------------------------------------------------------------------
 
 --- Adds a set of signals to the given constant combinator behavior.
 --- @param behavior LuaConstantCombinatorControlBehavior
@@ -130,10 +189,7 @@ local function add_all_signals(behavior)
     end
 end
 
-------------------------------------------------------------------------
-
 ---@param fc_entity FilterCombinatorData
----@param player_index integer?
 ---@return LuaEntity all_signals
 ---@return integer all_signals_count
 function FiCo:getAllSignalsConstantCombinator(fc_entity)
@@ -179,44 +235,87 @@ function FiCo:clearAllSignalsConstantCombinator()
 end
 
 ------------------------------------------------------------------------
+-- internal wiring management
+------------------------------------------------------------------------
 
-create_internal_entity = function(cfg)
-    local fc_entity = cfg.entity
-    local type = cfg.type
-    local x = cfg.x or 0
-    local y = cfg.y or 0
-    local ignore = cfg.ignore or false
-    local player_index = cfg.player_index
+---@class FcWireConfig
+---@field src string
+---@field dst string?
+---@field src_circuit string?
+---@field dst_circuit string?
+---@field wire string?
 
-    -- ignored combinators are always invisible
-    local comb_visible = (not ignore) and Mod.settings:player(player_index).comb_visible
+---@param fc_entity FilterCombinatorData
+---@param wire_cfg FcWireConfig
+---@param wire_type table<string, defines.wire_type>?
+local function connect_wire(fc_entity, wire_cfg, wire_type)
+    wire_type = wire_type or defines.wire_type
+    local wire = wire_type[wire_cfg.wire or 'red']
 
-    local entity_map = const.entity_maps[comb_visible and 'debug' or 'standard']
+    assert(fc_entity.ref[wire_cfg.src])
+    assert(fc_entity.ref[wire_cfg.dst])
 
-    local main = fc_entity.main
-    ---@type LuaEntity
-    local sub_entity = main.surface.create_entity {
-        name = entity_map[type],
-        position = { x = main.position.x + (x or 0), y = main.position.y + (y or 0) },
-        direction = main.direction,
-        force = main.force,
-
-        create_build_effect_smoke = false,
-        spawn_decorations = false,
-        move_stuck_players = true,
-    }
-
-    sub_entity.minable = false
-    sub_entity.destructible = false
-
-    if not ignore then
-        fc_entity.entities[sub_entity.unit_number] = sub_entity
-    end
-
-    return sub_entity
+    assert(fc_entity.ref[wire_cfg.src].connect_neighbour {
+        target_entity = fc_entity.ref[wire_cfg.dst],
+        wire = wire,
+        source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
+        target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
+    })
 end
 
-------------------------------------------------------------------------
+---@param fc_entity FilterCombinatorData
+---@param wire_cfg FcWireConfig
+local function disconnect_wire(fc_entity, wire_cfg)
+    local wire = defines.wire_type[wire_cfg.wire or 'red']
+
+    assert(fc_entity.ref[wire_cfg.src])
+    if wire_cfg.dst then
+        assert(fc_entity.ref[wire_cfg.dst])
+    end
+
+    if wire_cfg.dst then
+        fc_entity.ref[wire_cfg.src].disconnect_neighbour {
+            target_entity = fc_entity.ref[wire_cfg.dst],
+            wire = wire,
+            source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
+            target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
+        }
+    else
+        fc_entity.ref[wire_cfg.src].disconnect_neighbour(wire)
+    end
+end
+
+
+-- Position grid for sub-entities if they are visible (for debugging)
+--
+--    -4/-4      -2/-4             0/-4 (out)  2/-4             4/-4
+--    -4/-2 (a2) -2/-2 (a4)        0/-2        2/-2  (d2)       4/-2 (d3)
+--    -4/ 0      -2/ 0 (input_pos) 0/ 0 (main) 2/ 0 (input_neg) 4/ 0 (d4)
+--    -4/ 2      -2/ 2 (filter)    0/ 2        2/ 2 (inv)       4/ 2
+--    -4/ 4 (cc) -2/ 4             0/ 4 (inp)  2/ 4             4/ 4 (ex)
+--
+local sub_entities = {
+    { id = 'cc',        type = 'cc', x = -4, y = 4 },
+    { id = 'ex',        type = 'cc', x = 4,  y = 4 },
+
+    { id = 'filter',    type = 'dc', x = -2, y = 2 },
+
+    { id = 'inp',       type = 'dc', x = 0,  y = 4 },
+    { id = 'out',       type = 'ac', x = 0,  y = -4 },
+
+    { id = 'inv',       type = 'ac', x = 2,  y = 2 },
+
+    { id = 'input_pos', type = 'ac', x = -2, y = 0 },
+    { id = 'input_neg', type = 'ac', x = 2,  y = 0 },
+
+    { id = 'a2',        type = 'ac', x = -4, y = -2 },
+    { id = 'a4',        type = 'ac', x = -2, y = -2 },
+
+    { id = 'd2',        type = 'dc', x = 2,  y = -2 },
+    { id = 'd3',        type = 'dc', x = 4,  y = -2 },
+    { id = 'd4',        type = 'dc', x = 4,  y =  0 },
+
+}
 
 local signal_each = { type = 'virtual', name = 'signal-each' }
 
@@ -235,6 +334,7 @@ local initial_behavior = {
 }
 
 local wiring = {
+    -- the base wiring that needs to be done when the fc is created
     initial = {
         -- ex, target_entity = inv, target_circuit_id = output }
         { src = 'ex',        dst = 'inv',            dst_circuit = 'output' },
@@ -290,6 +390,7 @@ local wiring = {
         -- main.connect_neighbour { wire = defines.wire_type.green, target_entity = d1, target_circuit_id = input, source_circuit_id = input, }
         { src = 'main',      src_circuit = 'input',  dst = 'inp',           dst_circuit = 'input',  wire = 'green' },
     },
+    -- disconnect phase 1. After executing this, the fc is disabled
     disconnect1 = {
         -- Disconnect main, which was potentially rewired for wire input based filtering
         -- data.main.disconnect_neighbour { wire = defines.wire_type.red, target_entity = data.inp, target=input, source=input, }
@@ -301,6 +402,7 @@ local wiring = {
         -- data.main.disconnect_neighbour { wire = defines.wire_type.green, target_entity = data.filter, target=input, source=input, }
         { src = 'main', src_circuit = 'input', dst = 'filter', dst_circuit = 'input', wire = 'green' },
     },
+    -- disconnect phase 2. After executing this, the fc is ready to be rewired
     disconnect2 = {
         -- Disconnect configured input, which gets rewired for exclusive mode and wire input filtering
         -- data.cc.disconnect_neighbour(defines.wire_type.red)
@@ -319,6 +421,7 @@ local wiring = {
         { src = 'filter', src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
 
     },
+    -- connect default configuration (include mode, using constants)
     connect_default = {
         -- Default config
         -- data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.input_pos, target=input, }
@@ -331,6 +434,7 @@ local wiring = {
         -- data.main.connect_neighbour { wire = defines.wire_type.green, target_entity = data.inp, target=input, source=input, }
         { src = 'main', src_circuit = 'input', dst = 'inp',          dst_circuit = 'input', wire = 'green' },
     },
+    -- connect exclude configuration (exclude mode, using constants)
     connect_exclude = {
         -- All but the configured signals
         -- data.cc.connect_neighbour { wire = defines.wire_type.red, target_entity = data.inv, target=input }
@@ -346,6 +450,7 @@ local wiring = {
         -- data.main.connect_neighbour { wire = defines.wire_type.green, target_entity = data.inp, target=input, source=input, }
         { src = 'main', src_circuit = 'input',  dst = 'inp',          dst_circuit = 'input', wire = 'green' },
     },
+    -- connect wire mode (include mode, using wire to select signals)
     connect_use_wire = {
         -- Wire input is the signals we want
         -- data.main.connect_neighbour { wire = non_filter_wire, target_entity = data.inp, target=input, source=input, }
@@ -359,6 +464,7 @@ local wiring = {
         { src = 'filter', src_circuit = 'output', dst = 'input_neg', dst_circuit = 'input' },
 
     },
+    -- connect wire exclude mode (exclude mode, using wire to select signals)
     connect_use_wire_exclude = {
         -- All but those present on an input wire
         -- data.main.connect_neighbour { wire = non_filter_wire, target_entity = data.inp, target=input, source=input, }
@@ -373,86 +479,69 @@ local wiring = {
     }
 }
 
-
----@class FcWireConfig
----@field src string
----@field dst string?
----@field src_circuit string?
----@field dst_circuit string?
----@field wire string?
-
-
+--- Rewires a FC to match its configuration. Must be called after every configuration
+--- change.
 ---@param fc_entity FilterCombinatorData
----@param wire_cfg FcWireConfig
----@param wire_type table<string, defines.wire_type>?
-local function connect_wire(fc_entity, wire_cfg, wire_type)
-    wire_type = wire_type or defines.wire_type
-    local wire = wire_type[wire_cfg.wire or 'red']
+function FiCo:reconfigure(fc_entity)
+    if not fc_entity then return end
 
-    assert(fc_entity.ref[wire_cfg.src])
-    assert(fc_entity.ref[wire_cfg.dst])
+    local fc_config = fc_entity.config
 
-    assert(fc_entity.ref[wire_cfg.src].connect_neighbour {
-        target_entity = fc_entity.ref[wire_cfg.dst],
-        wire = wire,
-        source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
-        target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
-    })
-end
+    local enabled = fc_config.enabled and Util.STATUS_TABLE[fc_entity.config.status] ~= 'RED'
 
----@param fc_entity FilterCombinatorData
----@param wire_cfg FcWireConfig
-local function disconnect_wire(fc_entity, wire_cfg)
-    local wire = defines.wire_type[wire_cfg.wire or 'red']
-
-    assert(fc_entity.ref[wire_cfg.src])
-    if wire_cfg.dst then
-        assert(fc_entity.ref[wire_cfg.dst])
+    -- disconnect wires in case the combinator was turned off
+    for _, cfg in pairs(wiring.disconnect1) do
+        disconnect_wire(fc_entity, cfg)
     end
 
-    if wire_cfg.dst then
-        fc_entity.ref[wire_cfg.src].disconnect_neighbour {
-            target_entity = fc_entity.ref[wire_cfg.dst],
-            wire = wire,
-            source_circuit_id = wire_cfg.src_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.src_circuit],
-            target_circuit_id = wire_cfg.dst_circuit and defines.circuit_connector_id['combinator_' .. wire_cfg.dst_circuit],
-        }
+    -- turn the constant combinators on or off
+    -- fc_entity.ref.main.active = enabled
+    fc_entity.ref.ex.get_or_create_control_behavior().enabled = enabled
+
+    local cc_control = fc_entity.ref.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
+    cc_control.enabled = enabled
+
+    if not enabled then return end
+
+    -- setup the signals for the cc
+    cc_control.parameters = table.deepcopy(fc_config.signals)
+
+    -- disconnect wires for rewiring
+    for _, cfg in pairs(wiring.disconnect2) do
+        disconnect_wire(fc_entity, cfg)
+    end
+
+    -- now rewire
+    local rewire_cfg
+    if fc_config.include_mode and fc_config.use_wire then
+        -- all inputs on a wire
+        rewire_cfg = wiring.connect_use_wire
+    elseif fc_config.use_wire then
+        -- all but inputs on a wire
+        rewire_cfg = wiring.connect_use_wire_exclude
+    elseif fc_config.include_mode then
+        -- default
+        rewire_cfg = wiring.connect_default
     else
-        fc_entity.ref[wire_cfg.src].disconnect_neighbour(wire)
+        -- exclude mode
+        rewire_cfg = wiring.connect_exclude
+    end
+
+    local wire_type = {
+        red = defines.wire_type.red,
+        green = defines.wire_type.green,
+        filter = fc_config.filter_wire == defines.wire_type.red and defines.wire_type.red or defines.wire_type.green,
+        non_filter = fc_config.filter_wire == defines.wire_type.green and defines.wire_type.red or defines.wire_type.green,
+    }
+
+    -- reconnect based on the configuration
+    for _, cfg in pairs(rewire_cfg) do
+        connect_wire(fc_entity, cfg, wire_type)
     end
 end
 
-
---
---    -4/-4  -2/-4   0/-4   2/-4   4/-4
---    -4/-2  -2/-2   0/-2   2/-2   4/-2
---    -4/ 0  -2/ 0   0/ 0   2/ 0   4/ 0
---    -4/ 2  -2/ 2   0/ 2   2/ 2   4/ 2
---    -4/ 4  -2/ 4   0/ 4   2/ 4   4/ 4
---
-local sub_entities = {
-    { id = 'cc',        type = 'cc', x = -4, y = 4 },
-    { id = 'ex',        type = 'cc', x = 4,  y = 4 },
-
-    { id = 'filter',    type = 'dc', x = -2, y = 2 },
-
-    { id = 'inp',       type = 'dc', x = 0,  y = 4 },
-    { id = 'out',       type = 'ac', x = 0,  y = -4 },
-
-    { id = 'inv',       type = 'ac', x = 2,  y = 2 },
-
-    { id = 'input_pos', type = 'ac', x = -2, y = 0 },
-    { id = 'input_neg', type = 'ac', x = 2,  y = 0 },
-
-    { id = 'a2',        type = 'ac', x = -4, y = -2 },
-    { id = 'a4',        type = 'ac', x = -2, y = -2 },
-
-    { id = 'd2',        type = 'dc', x = 0,  y = -2 },
-    { id = 'd3',        type = 'dc', x = 2,  y = -2 },
-    { id = 'd4',        type = 'dc', x = 4,  y = -2 },
-
-}
-
+------------------------------------------------------------------------
+-- create/destroy
 ------------------------------------------------------------------------
 
 --- Creates a new entity from the main entity, registers with the mod
@@ -467,12 +556,8 @@ function FiCo:create(main, player_index, tags)
 
     assert(self:entity(entity_id) == nil)
 
-    local config = self:create_config()
-
     -- if tags were passed in and they contain a fc config, use that.
-    if tags and tags['fc_config'] then
-        config = self:create_config(tags['fc_config'] --[[@as FilterCombinatorConfig]])
-    end
+    local config = create_config(tags and tags['fc_config'] --[[@as FilterCombinatorConfig]])
 
     local fc_entity = {
         main = main,
@@ -517,82 +602,7 @@ function FiCo:create(main, player_index, tags)
     return fc_entity
 end
 
-------------------------------------------------------------------------
-
----@param fc_entity FilterCombinatorData
-function FiCo:update_entity(fc_entity)
-    if not fc_entity then return end
-
-    -- update status based on the main entity
-    if not Is.Valid(fc_entity.main) then
-        fc_entity.config.enabled = false
-        fc_entity.config.status = defines.entity_status.marked_for_deconstruction
-    else
-        fc_entity.config.status = fc_entity.main.status
-    end
-end
-
-------------------------------------------------------------------------
-
----@param fc_entity FilterCombinatorData
-function FiCo:rewire_entity(fc_entity)
-    if not fc_entity then return end
-
-    local fc_config = fc_entity.config
-
-    -- disconnect wires in case the combinator was turned off
-    for _, cfg in pairs(wiring.disconnect1) do
-        disconnect_wire(fc_entity, cfg)
-    end
-
-    -- turn main entity and the constant combinators on or off
-    fc_entity.ref.main.active = fc_config.enabled
-    fc_entity.ref.ex.get_or_create_control_behavior().enabled = fc_config.enabled
-
-    local cc_control = fc_entity.ref.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
-    cc_control.enabled = fc_config.enabled
-
-    if not fc_config.enabled then return end
-
-    -- setup the signals for the cc
-    cc_control.parameters = table.deepcopy(fc_config.signals)
-
-    -- disconnect wires for rewiring
-    for _, cfg in pairs(wiring.disconnect2) do
-        disconnect_wire(fc_entity, cfg)
-    end
-
-    -- now rewire
-    local rewire_cfg
-    if fc_config.include_mode and fc_config.use_wire then
-        -- all inputs on a wire
-        rewire_cfg = wiring.connect_use_wire
-    elseif fc_config.use_wire then
-        -- all but inputs on a wire
-        rewire_cfg = wiring.connect_use_wire_exclude
-    elseif fc_config.include_mode then
-        -- default
-        rewire_cfg = wiring.connect_default
-    else
-        -- exclude mode
-        rewire_cfg = wiring.connect_exclude
-    end
-
-    local wire_type = {
-        red = defines.wire_type.red,
-        green = defines.wire_type.green,
-        filter = fc_config.filter_wire == defines.wire_type.red and defines.wire_type.red or defines.wire_type.green,
-        non_filter = fc_config.filter_wire == defines.wire_type.green and defines.wire_type.red or defines.wire_type.green,
-    }
-
-    -- reconnect the configuration
-    for _, cfg in pairs(rewire_cfg) do
-        connect_wire(fc_entity, cfg, wire_type)
-    end
-end
-
----------------------------------------------------------------------------
-
+--- Destroys a FC and all its sub-entities
 --- @param entity_id integer main unit number (== entity id)
 function FiCo:destroy(entity_id)
     assert(Is.Number(entity_id))
@@ -607,114 +617,49 @@ function FiCo:destroy(entity_id)
     self:setEntity(entity_id, nil)
 end
 
----Returns the filter combinator configuration or nil
----@param entity LuaEntity|integer
----@return FilterCombinatorData? config The filter combinator configuration
----@return integer match The index in the data array
-function FiCo.locate_config(entity)
-    local id = entity
-    if type(entity) == 'table' then
-        if not (entity and entity.valid) then return nil, -1 end
-        id = entity.unit_number
-    end
+------------------------------------------------------------------------
+-- ticker code, updates the status 
+------------------------------------------------------------------------
 
-    local match = global.sil_filter_combinators[id]
-    if not match then return nil, -1 end
-    return global.sil_fc_data[match], match
+--- Can be called from a ticker to update e.g. power status. Useful in
+--- the GUI.
+---@param fc_entity FilterCombinatorData
+function FiCo:tick(fc_entity)
+    if not fc_entity then return end
+
+    -- update status based on the main entity
+    if not Is.Valid(fc_entity.main) then
+        fc_entity.config.enabled = false
+        fc_entity.config.status = defines.entity_status.marked_for_deconstruction
+    else
+        local old_status = fc_entity.config.status
+        fc_entity.config.status = fc_entity.main.status
+
+        if old_status ~= fc_entity.config.status then
+            self:reconfigure(fc_entity)
+        end
+    end
 end
 
 ------------------------------------------------------------------------
+-- picker dollies (move)
+------------------------------------------------------------------------
 
----@param table FilterCombinator
----@return table FilterCombinator
-function FiCo.add_metatable(table)
-    if not getmetatable(table) then
-        setmetatable(table, { __index = FiCo })
-    end
-    return table
-end
+function FiCo:move(start_pos, entity)
+    local fc_entity = self:entity(entity.unit_number)
+    if not fc_entity then return end
 
---- @param entity LuaEntity
-function FiCo.delete_entity(entity)
-    if string.sub(entity.name, 1, const.name_prefix_len) ~= const.filter_combinator_name then return end
+    local x = entity.position.x - start_pos.x
+    local y = entity.position.y - start_pos.y
 
-    local data, match = FiCo.locate_config(entity)
-    if not data then return end
-
-    assert(data.main.valid and entity.valid and data.main.unit_number == entity.unit_number)
-
-    for idx, entity in pairs(data.ids) do
-        entity.destroy()
-        global.sil_filter_combinators[idx] = nil
-    end
-
-    FiCo.add_metatable(data.config):remove_data(match)
-end
-
-function FiCo.move_entity(entity)
-    local data = FiCo.locate_config(entity)
-    if data then
-        for _, e in pairs(data.ids) do
-            if e.valid then
-                e.teleport(entity.position)
-            end
+    for _, e in pairs(fc_entity.entities) do
+        if e.valid then
+            e.teleport { x = e.position.x + x, y = e.position.y + y }
         end
     end
 end
 
-function FiCo.clone_entity(src, dst)
-    local data = FiCo.locate_config(src)
-    if not data then return end
-
-    local function replace_combinator(old, new)
-        data.ids[old.unit_number] = nil
-        data.ids[new.unit_number] = new
-    end
-
-    local src_unit = src.unit_number
-    if src.name == const.filter_combinator_name then
-        replace_combinator(data.main, dst)
-        data.main = dst
-    elseif src.name == const.internal_ac_name or src.name == const.internal_dc_name then
-        for i, e in pairs(data.calc) do
-            if e and e.valid and e.unit_number == src_unit then
-                replace_combinator(data.calc[i], dst)
-                data.calc[i] = dst
-                break
-            end
-        end
-        if src_unit == data.inv.unit_number then
-            replace_combinator(data.inv, dst)
-            data.inv = dst
-        elseif src_unit == data.input_pos.unit_number then
-            replace_combinator(data.input_pos, dst)
-            data.input_pos = dst
-        elseif src_unit == data.input_neg.unit_number then
-            replace_combinator(data.input_neg, dst)
-            data.input_neg = dst
-        elseif src_unit == data.filter.unit_number then
-            replace_combinator(data.filter, dst)
-            data.filter = dst
-        elseif src_unit == data.inp.unit_number then
-            replace_combinator(data.inp, dst)
-            data.inp = dst
-        end
-    elseif src.name == const.internal_cc_name then
-        if data.cc.unit_number == src_unit then
-            replace_combinator(data.cc, dst)
-            data.cc = dst
-        elseif data.ex.unit_number == src_unit then
-            replace_combinator(data.ex, dst)
-            data.ex = dst
-        else
-            log('Failed to update ' .. src.name .. ' ' .. src_unit .. ' -> ' .. dst.unit_number)
-        end
-    else
-        log('Unmatched entity ' .. src.name)
-    end
-    global.sil_filter_combinators[dst.unit_number] = global.sil_filter_combinators[src_unit]
-    global.sil_filter_combinators[src_unit] = nil
-end
+------------------------------------------------------------------------
 
 return FiCo
 

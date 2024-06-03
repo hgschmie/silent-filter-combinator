@@ -1,6 +1,8 @@
-local table = require('__stdlib__/stdlib/utils/table')
-
 ----------------------------------------------------------------------------------------------------
+-- access to the framework provided runtime storage - ported from flib
+----------------------------------------------------------------------------------------------------
+
+local table = require('__stdlib__/stdlib/utils/table')
 
 --- Main class governing the runtime.
 -- Runtime exists during gameplay.
@@ -11,19 +13,6 @@ local Runtime = {}
 function Runtime:storage()
     if (not global[Mod.STORAGE]) then global[Mod.STORAGE] = {} end
     return global[Mod.STORAGE]
-end
-
---- Write data to persistent storage.
--- @tparam table Data to save (simple values only).
-function Runtime:save(fields)
-    table.merge(global, fields)
-    return self
-end
-
---- Read data from persistent storage.
--- @treturn table Data stored in the persistent storage.
-function Runtime:load()
-    return table.deep_copy(global)
 end
 
 local function get_id(self, name, initial_function)

@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- a portable framework needs to know the root location of the mod
+-- load all framework prototype pieces
 ---------------------------------------------------------------------------------------------------
 
 require('framework.prototypes.sprite')

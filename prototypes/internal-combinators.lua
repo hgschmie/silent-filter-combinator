@@ -1,7 +1,3 @@
--- Copyright 2023 Sil3ntStorm https://github.com/Sil3ntStorm
---
--- Licensed under MS-RL, see https://opensource.org/licenses/MS-RL
-
 local const = require('lib.constants')
 
 local combinator_flags = {

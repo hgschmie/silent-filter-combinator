@@ -5,6 +5,7 @@
 --------------------------------------------------------------------------------
 
 local const = require('lib.constants')
+local Is = require('__stdlib__/stdlib/utils/is')
 
 local CompaktCircuitSupport = {}
 
@@ -12,13 +13,13 @@ local CompaktCircuitSupport = {}
 
 ---@param entity LuaEntity
 local function ccs_get_info(entity)
-    local data = This.fico.locate_config(entity)
-    if not data then return end
+    if not Is.Valid(entity) then return end
 
-    local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
+    local fc_entity = This.fico:entity(entity.unit_number)
+    if not fc_entity then return end
+
     return {
-        cc_config = data.config,
-        cc_params = behavior.parameters,
+        fc_config = fc_entity.config
     }
 end
 
@@ -26,36 +27,39 @@ end
 ---@param position MapPosition
 ---@param force LuaForce
 local function ccs_create_packed_entity(info, surface, position, force)
-    local ent = surface.create_entity { name = const.filter_combinator_name_packed, position = position, force = force, direction = info.direction, raise_built = false }
+    local packed_main = surface.create_entity {
+        name = const.filter_combinator_name_packed,
+        position = position,
+        force = force,
+        direction = info.direction,
+        raise_built = false
+    }
 
-    if ent then
-        local data = This.fico.create_entity(ent)
-        data.config = This.fico.add_metatable(info.cc_config)
+    assert(packed_main)
 
-        local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-        behavior.parameters = info.cc_params
-        behavior.enabled = data.config.enabled
-        data.ex.get_or_create_control_behavior().enabled = data.config.enabled
-        data.config:update_entity(data)
-    end
-    return ent
+    local fc_entity = This.fico:create(packed_main, nil, info)
+    assert(fc_entity)
+
+    return packed_main
 end
 
 ---@param surface LuaSurface
 ---@param force LuaForce
 local function ccs_create_entity(info, surface, force)
-    local ent = surface.create_entity { name = const.filter_combinator_name, position = info.position, force = force, direction = info.direction, raise_built = false }
-    if ent then
-        local data = This.fico.create_entity(ent)
-        data.config = This.fico.add_metatable(info.cc_config)
+    local main = surface.create_entity {
+        name = const.filter_combinator_name,
+        position = info.position,
+        force = force,
+        direction = info.direction,
+        raise_built = false
+    }
 
-        local behavior = data.cc.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior]]
-        behavior.parameters = info.cc_params
-        behavior.enabled = data.config.enabled
-        data.ex.get_or_create_control_behavior().enabled = data.config.enabled
-        data.config:update_entity(data)
-    end
-    return ent
+    assert(main)
+
+    local fc_entity = This.fico:create(main, nil, info)
+    assert(fc_entity)
+
+    return main
 end
 
 --------------------------------------------------------------------------------
@@ -77,6 +81,61 @@ local function ccs_init()
 end
 
 --------------------------------------------------------------------------------
+
+CompaktCircuitSupport.data = function()
+    local packed = table.deepcopy(data.raw['arithmetic-combinator'][const.filter_combinator_name])
+
+    -- PrototypeBase
+    packed.name = const.filter_combinator_name_packed
+
+    -- ArithmeticCombinatorPrototype
+    packed.plus_symbol_sprites = util.empty_sprite(1)
+    packed.minus_symbol_sprites = util.empty_sprite(1)
+    packed.multiply_symbol_sprites = util.empty_sprite(1)
+    packed.divide_symbol_sprites = util.empty_sprite(1)
+    packed.modulo_symbol_sprites = util.empty_sprite(1)
+    packed.power_symbol_sprites = util.empty_sprite(1)
+    packed.left_shift_symbol_sprites = util.empty_sprite(1)
+    packed.right_shift_symbol_sprites = util.empty_sprite(1)
+    packed.and_symbol_sprites = util.empty_sprite(1)
+    packed.or_symbol_sprites = util.empty_sprite(1)
+    packed.xor_symbol_sprites = util.empty_sprite(1)
+
+    -- CombinatorPrototype
+    packed.sprites = util.empty_sprite(1)
+    packed.activity_led_light_offsets = { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }
+    packed.activity_led_sprites = util.empty_sprite(1)
+    packed.draw_circuit_wires = false
+
+    -- turn off the flashing icons
+    packed.energy_source.render_no_network_icon = false
+    packed.energy_source.render_no_power_icon = false
+
+    -- EntityPrototype
+    packed.collision_box = nil
+    packed.collision_mask = {}
+    packed.selection_box = nil
+    packed.flags = {
+        'placeable-off-grid',
+        'not-repairable',
+        'not-on-map',
+        'not-deconstructable',
+        'not-blueprintable',
+        'hidden',
+        'hide-alt-info',
+        'not-flammable',
+        'no-copy-paste',
+        'not-selectable-in-game',
+        'not-upgradable',
+        'not-in-kill-statistics',
+        'not-in-made-in'
+    }
+    packed.minable = nil
+    packed.selectable_in_game = false
+
+    data:extend { packed }
+end
+
 
 CompaktCircuitSupport.runtime = function()
     local Event = require('__stdlib__/stdlib/event/event')

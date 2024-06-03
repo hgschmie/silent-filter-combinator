@@ -41,7 +41,7 @@ end
 function FrameworkLogger:init()
     assert(script, 'Logger can only be initalized in runtime stage')
 
-    self.debug_mode = Mod.settings:startup().debug_mode
+    self.debug_mode = Mod.settings:startup().debug_mode --[[@as boolean]]
     self.core_logger = StdLibLogger.new('framework', self.debug_mode, { force_append = true })
 
     self.flush = function() self.core_logger.write() end
