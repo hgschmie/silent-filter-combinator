@@ -39,14 +39,8 @@ local function onGhostEntityCreated(event)
     global.ghosts = ghosts
 end
 
-local function onGhostEntityDestroyed(event)
-    if global.ghosts and global.ghosts[event.unit_number] then
-        global.ghosts[event.unit_number] = nil
-    end
-end
-
 --------------------------------------------------------------------------------
--- entity create / destroy
+-- entity create / delete
 --------------------------------------------------------------------------------
 
 --- @param event EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_revive
@@ -69,13 +63,35 @@ local function onEntityCreated(event)
         end
     end
 
+    -- register entity for destruction
+    script.register_on_entity_destroyed(entity)
+
     This.fico:create(entity, player_index, tags)
 end
 
-local function onEntityDestroyed(event)
+local function onEntityDeleted(event)
     local entity = event and (event.created_entity or event.entity)
 
     This.fico:destroy(entity.unit_number)
+end
+
+--------------------------------------------------------------------------------
+-- Entity destruction
+--------------------------------------------------------------------------------
+
+local function onEntityDestroyed(event)
+    -- is it a ghost?
+    if global.ghosts and global.ghosts[event.unit_number] then
+        global.ghosts[event.unit_number] = nil
+        return
+    end
+
+    -- or a main entity?
+    local fc_entity = This.fico:entity(event.unit_number)
+    if not fc_entity then return end
+
+    -- main entity destroyed
+    This.fico:destroy(event.unit_number)
 end
 
 --------------------------------------------------------------------------------
@@ -244,11 +260,14 @@ local match_ghost_entities = Util.create_event_ghost_entity_matcher(const.main_e
 
 -- manage ghost building (robot building)
 Util.event_register(const.creation_events, onGhostEntityCreated, match_ghost_entities)
-Event.register(defines.events.on_entity_destroyed, onGhostEntityDestroyed)
 
--- entity create / destroy
+-- entity create / delete
 Util.event_register(const.creation_events, onEntityCreated, match_main_entities)
-Util.event_register(const.destruction_events, onEntityDestroyed, match_main_entities)
+Util.event_register(const.deletion_events, onEntityDeleted, match_main_entities)
+
+-- entity destroy
+Event.register(defines.events.on_entity_destroyed, onEntityDestroyed)
+
 
 -- Entity cloning
 Event.register(defines.events.on_entity_cloned, onMainEntityCloned, match_main_entities)
@@ -267,9 +286,3 @@ Event.register(defines.events.on_runtime_mod_setting_changed, onConfigurationCha
 
 -- Event ticker
 Event.on_nth_tick(301, onNthTick)
-
-
-
-
-
-

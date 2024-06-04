@@ -97,7 +97,7 @@ const.creation_events = {
     defines.events.script_raised_revive
 }
 
-const.destruction_events = {
+const.deletion_events = {
     defines.events.on_player_mined_entity,
     defines.events.on_robot_mined_entity,
     defines.events.on_entity_died,
