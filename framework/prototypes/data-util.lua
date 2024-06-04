@@ -6,16 +6,16 @@
 local FrameworkDataUtil = {}
 
 --- An empty image. This image is 8x8 to facilitate usage with GUI styles.
-FrameworkDataUtil.empty_image = Mod.ROOT .. '/framework/graphics/empty.png'
+FrameworkDataUtil.empty_image = Framework.ROOT .. '/framework/graphics/empty.png'
 
 --- A black image, for use with tool backgrounds. This image is 1x1.
-FrameworkDataUtil.black_image = Mod.ROOT .. '/framework/graphics/black.png'
+FrameworkDataUtil.black_image = Framework.ROOT .. '/framework/graphics/black.png'
 
 --- A desaturated planner image. Tint this sprite to easily add your own planners.
-FrameworkDataUtil.planner_base_image = Mod.ROOT .. '/framework/graphics/planner.png'
+FrameworkDataUtil.planner_base_image = Framework.ROOT .. '/framework/graphics/planner.png'
 
 --- A dark red button tileset. Used for the `flib_tool_button_dark_red` style.
-FrameworkDataUtil.dark_red_button_tileset = Mod.ROOT .. '/framework/graphics/dark-red-button.png'
+FrameworkDataUtil.dark_red_button_tileset = Framework.ROOT .. '/framework/graphics/dark-red-button.png'
 
 --- Copy a prototype, assigning a new name and minable properties.
 --- @param prototype table

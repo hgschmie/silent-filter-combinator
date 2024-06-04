@@ -13,7 +13,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         type = 'button_style',
         default_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 0, y },
                 size = { 144, 200 },
             },
@@ -21,7 +21,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         hovered_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 144, y },
                 size = { 144, 200 },
             },
@@ -29,7 +29,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         clicked_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 144, y },
                 size = { 144, 200 },
             },
@@ -37,7 +37,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 288, y },
                 size = { 144, 200 },
             },
@@ -45,7 +45,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_hovered_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 432, y },
                 size = { 144, 200 },
             },
@@ -53,7 +53,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_clicked_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 432, y },
                 size = { 144, 200 },
             },
@@ -68,7 +68,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         type = 'button_style',
         default_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 576, y },
                 size = { 144, 200 },
             },
@@ -76,7 +76,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         hovered_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 720, y },
                 size = { 144, 200 },
             },
@@ -84,7 +84,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         clicked_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 720, y },
                 size = { 144, 200 },
             },
@@ -92,7 +92,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 864, y },
                 size = { 144, 200 },
             },
@@ -100,7 +100,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_hovered_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 1008, y },
                 size = { 144, 200 },
             },
@@ -108,7 +108,7 @@ local function build_technology_slot(name, y, level_color, level_range_color)
         },
         selected_clicked_graphical_set = {
             base = {
-                filename = Mod.ROOT .. '/framework/graphics/technology-slots.png',
+                filename = Framework.ROOT .. '/framework/graphics/technology-slots.png',
                 position = { 1008, y },
                 size = { 144, 200 },
             },

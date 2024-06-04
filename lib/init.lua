@@ -5,7 +5,7 @@
 local const = require('lib.constants')
 
 -- Framework core
-require('framework.mod'):init(const.mod_init)
+require('framework.init'):init(const.framework_init)
 
 -- mod code
 This = require("lib.this")

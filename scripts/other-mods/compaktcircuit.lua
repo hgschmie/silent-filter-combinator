@@ -36,6 +36,7 @@ local function ccs_create_packed_entity(info, surface, position, force)
     }
 
     assert(packed_main)
+    script.register_on_entity_destroyed(packed_main)
 
     local fc_entity = This.fico:create(packed_main, nil, info)
     assert(fc_entity)
@@ -55,6 +56,7 @@ local function ccs_create_entity(info, surface, force)
     }
 
     assert(main)
+    script.register_on_entity_destroyed(main)
 
     local fc_entity = This.fico:create(main, nil, info)
     assert(fc_entity)

@@ -267,7 +267,7 @@ onWindowClosed = function(event)
         player_data.fc_gui = nil
 
         if fc_gui.gui then
-            Mod.gui_manager:destroy_gui(fc_gui.gui)
+            Framework.gui_manager:destroy_gui(fc_gui.gui)
         end
     end
 end
@@ -482,7 +482,7 @@ local function onGuiOpened(event)
         return
     end
 
-    local gui = Mod.gui_manager:create_gui(player.gui.screen, get_ui(fc_entity))
+    local gui = Framework.gui_manager:create_gui(player.gui.screen, get_ui(fc_entity))
 
     ---@class FilterCombinatorGui
     ---@field gui FrameworkGui

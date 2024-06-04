@@ -2,7 +2,7 @@ require('lib.init')
 
 data:extend({
       {
-         name = Mod.PREFIX .. 'empty-slots',
+         name = Framework.PREFIX .. 'empty-slots',
          type = 'int-setting',
          setting_type = 'startup',
          order = 'a',
@@ -13,7 +13,7 @@ data:extend({
       {
          -- Debug mode (framework dependency)
          setting_type = "startup",
-         name = Mod.PREFIX .. 'debug-mode',
+         name = Framework.PREFIX .. 'debug-mode',
          type = "bool-setting",
          default_value = false,
          order = "z"
@@ -21,7 +21,7 @@ data:extend({
       {
          -- make internal units visible
          setting_type = "runtime-per-user",
-         name = Mod.PREFIX .. 'comb-visible',
+         name = Framework.PREFIX .. 'comb-visible',
          type = "bool-setting",
          default_value = false,
          order = "b"

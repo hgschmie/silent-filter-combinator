@@ -16,7 +16,7 @@ local Settings = {
    -- be ignored).
    definitions = {
       startup = {
-         debug_mode = { Mod.PREFIX .. 'debug-mode', false }
+         debug_mode = { Framework.PREFIX .. 'debug-mode', false }
       },
       runtime = {},
       player = {},
@@ -138,12 +138,12 @@ function Settings:get_settings(setting_type, player_index)
             values[key] = value
          end
       end
-      Mod.logger:debugf("Loaded '%s' settings: %s", setting_type, serpent.line(st:get_values()))
+      Framework.logger:debugf("Loaded '%s' settings: %s", setting_type, serpent.line(st:get_values()))
    end
    return st:get_values(player_index) or error('Failed to load ' .. setting_type .. ' settings.')
 end
 
---- Flushes all cached settings. 
+--- Flushes all cached settings.
 --- The next access to a setting will reload them from the game.
 function Settings:flush()
    settings_table['player']:clear()

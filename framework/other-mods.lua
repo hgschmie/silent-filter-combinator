@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------------------------------------
 -- Support for other (optional) mods.
--- 
+--
 -- Must be defined in This.other_mods. If a mod is loaded, finds scripts.other-mods.<mod-name> and calls
 -- - settings() in settings phase
 -- - data() in first data phase

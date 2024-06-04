@@ -14,7 +14,7 @@ local FrameworkGui = require('framework.gui')
 --- @class FrameworkGuiManager
 --- @field GUI_PREFIX string The prefix for all registered handlers and other global information.
 local FrameworkGuiManager = {
-    GUI_PREFIX = Mod.PREFIX .. 'gui-',
+    GUI_PREFIX = Framework.PREFIX .. 'gui-',
 }
 
 ------------------------------------------------------------------------
@@ -23,7 +23,7 @@ local FrameworkGuiManager = {
 
 --- @return FrameworkGuiManagerState state Manages GUI state
 function FrameworkGuiManager:state()
-    local storage = Mod.runtime:storage()
+    local storage = Framework.runtime:storage()
 
     if not storage.gui_manager then
         ---@class FrameworkGuiManagerState
@@ -131,7 +131,7 @@ end
 for name, id in pairs(defines.events) do
     if name:sub(1, 7) == 'on_gui_' then
         Event.on_event(id, function(ev)
-            Mod.gui_manager:dispatch(ev)
+            Framework.gui_manager:dispatch(ev)
         end)
     end
 end

@@ -2,114 +2,110 @@
 -- fully independent, can be loaded into scripts and data
 --
 
-local const = {}
+local Constants = {}
 
 --------------------------------------------------------------------------------
+-- main constants
+--------------------------------------------------------------------------------
 
-const.prefix = 'hps:fc-'
-const.name = 'filter-combinator'
-const.root = '__filter-combinator-improved__'
-const.gfx_location = const.root .. '/graphics/'
+Constants.prefix = 'hps:fc-'
+Constants.name = 'filter-combinator'
+Constants.root = '__filter-combinator-improved__'
+Constants.gfx_location = Constants.root .. '/graphics/'
 
----@return FrameworkModConfig config
-function const:mod_init()
+--------------------------------------------------------------------------------
+-- Framework intializer
+--------------------------------------------------------------------------------
+
+---@return FrameworkConfig config
+function Constants.framework_init()
     return {
         -- prefix is the internal mod prefix
-        prefix = const.prefix,
+        prefix = Constants.prefix,
         -- name is a human readable name
-        name = const.name,
-
-        root = const.root,
+        name = Constants.name,
+        -- The filesystem root.
+        root = Constants.root,
     }
 end
 
+--------------------------------------------------------------------------------
+-- Path and name helpers
+--------------------------------------------------------------------------------
+
 ---@param value string
 ---@return string result
-function const:with_prefix(value)
+function Constants:with_prefix(value)
     return self.prefix .. value
 end
 
-const.gfx_location = '__filter-combinator-improved__/graphics/'
-
 ---@param path string
 ---@return string result
-function const:png(path)
+function Constants:png(path)
     return self.gfx_location .. path .. '.png'
 end
 
 ---@param id string
 ---@return string result
-function const:locale(id)
-    return const:with_prefix('gui.') .. id
+function Constants:locale(id)
+    return Constants:with_prefix('gui.') .. id
 end
 
 --------------------------------------------------------------------------------
 -- entity names and maps
 --------------------------------------------------------------------------------
 
-const.filter_combinator_name = const:with_prefix(const.name)
+-- Base name
+Constants.filter_combinator_name = Constants:with_prefix(Constants.name)
 
-const.filter_combinator_name_packed = const:with_prefix('filter-combinator-packed')
+-- Compactcircuits support
+Constants.filter_combinator_name_packed = Constants:with_prefix('filter-combinator-packed')
 
-const.internal_ac_name = const:with_prefix('filter-combinator-ac')
-const.internal_cc_name = const:with_prefix('filter-combinator-cc')
-const.internal_dc_name = const:with_prefix('filter-combinator-dc')
-const.internal_debug_ac_name = const:with_prefix('filter-combinator-debug-ac')
-const.internal_debug_cc_name = const:with_prefix('filter-combinator-debug-cc')
-const.internal_debug_dc_name = const:with_prefix('filter-combinator-debug-dc')
-
-const.entity_maps = {
-    standard = {
-        ac = const.internal_ac_name,
-        cc = const.internal_cc_name,
-        dc = const.internal_dc_name,
-    },
-    debug = {
-        ac = const.internal_debug_ac_name,
-        dc = const.internal_debug_dc_name,
-        cc = const.internal_debug_cc_name,
-    }
+Constants.main_entity_names = {
+    Constants.filter_combinator_name, Constants.filter_combinator_name_packed,
 }
 
-const.main_entity_names = {
-    const.filter_combinator_name,
-    const.filter_combinator_name_packed,
+-- Internal entities in normal and debug mode
+Constants.internal_ac_name = Constants:with_prefix('filter-combinator-ac')
+Constants.internal_cc_name = Constants:with_prefix('filter-combinator-cc')
+Constants.internal_dc_name = Constants:with_prefix('filter-combinator-dc')
+Constants.internal_debug_ac_name = Constants:with_prefix('filter-combinator-debug-ac')
+Constants.internal_debug_cc_name = Constants:with_prefix('filter-combinator-debug-cc')
+Constants.internal_debug_dc_name = Constants:with_prefix('filter-combinator-debug-dc')
+
+Constants.entity_maps = {
+    standard = { ac = Constants.internal_ac_name, cc = Constants.internal_cc_name, dc = Constants.internal_dc_name, },
+    debug = { ac = Constants.internal_debug_ac_name, dc = Constants.internal_debug_dc_name, cc = Constants.internal_debug_cc_name, }
 }
 
 -- all internal entities
-const.internal_entity_names = {
-    const.internal_ac_name,
-    const.internal_cc_name,
-    const.internal_dc_name,
-    const.internal_debug_ac_name,
-    const.internal_debug_cc_name,
-    const.internal_debug_dc_name,
+Constants.internal_entity_names = {
+    Constants.internal_ac_name, Constants.internal_cc_name, Constants.internal_dc_name,
+    Constants.internal_debug_ac_name, Constants.internal_debug_cc_name, Constants.internal_debug_dc_name,
 }
 
 --------------------------------------------------------------------------------
 -- Events
 --------------------------------------------------------------------------------
 
-
-const.creation_events = {
+Constants.creation_events = {
     defines.events.on_built_entity,
     defines.events.on_robot_built_entity,
     defines.events.script_raised_revive
 }
 
-const.deletion_events = {
+Constants.deletion_events = {
     defines.events.on_player_mined_entity,
     defines.events.on_robot_mined_entity,
     defines.events.on_entity_died,
     defines.events.script_raised_destroy
 }
 
-
 --------------------------------------------------------------------------------
 -- localization
 --------------------------------------------------------------------------------
 
-const.fc_entity_name = 'entity-name.' .. const.filter_combinator_name
+Constants.fc_entity_name = 'entity-name.' .. Constants.filter_combinator_name
 
 --------------------------------------------------------------------------------
-return const
+return Constants

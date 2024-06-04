@@ -41,7 +41,7 @@ end
 function FrameworkLogger:init()
     assert(script, 'Logger can only be initalized in runtime stage')
 
-    self.debug_mode = Mod.settings:startup().debug_mode --[[@as boolean]]
+    self.debug_mode = Framework.settings:startup().debug_mode --[[@as boolean]]
     self.core_logger = StdLibLogger.new('framework', self.debug_mode, { force_append = true })
 
     self.flush = function() self.core_logger.write() end
@@ -52,7 +52,7 @@ function FrameworkLogger:init()
 
     self:log('================================================================================')
     self:log('==')
-    self:logf("== Framework logfile for '%s' mod intialized (debug mode: %s)", Mod.NAME, tostring(self.debug_mode))
+    self:logf("== Framework logfile for '%s' mod intialized (debug mode: %s)", Framework.NAME, tostring(self.debug_mode))
     self:log('==')
 
     local Event = require('__stdlib__/stdlib/event/event')
@@ -60,11 +60,11 @@ function FrameworkLogger:init()
     -- The runtime storage is only available from an event. Schedule logging (and loading) for RUN_ID and GAME_ID
     -- in a tick event, then remove the event handler again.
     self.info = function()
-        Mod.RUN_ID = Mod.runtime:get_run_id()
-        Mod.GAME_ID = Mod.runtime:get_game_id()
-        Mod.logger:logf('== Game ID: %d, Run ID: %d', Mod.GAME_ID, Mod.RUN_ID)
-        Mod.logger:log('================================================================================')
-        Mod.logger:flush()
+        Framework.RUN_ID = Framework.runtime:get_run_id()
+        Framework.GAME_ID = Framework.runtime:get_game_id()
+        Framework.logger:logf('== Game ID: %d, Run ID: %d', Framework.GAME_ID, Framework.RUN_ID)
+        Framework.logger:log('================================================================================')
+        Framework.logger:flush()
 
         Event.remove(defines.events.on_tick, self.info)
         self.info = nil

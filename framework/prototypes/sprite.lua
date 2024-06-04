@@ -7,7 +7,7 @@ for i, color in ipairs { 'black', 'white', 'red', 'orange', 'yellow', 'green', '
     indicators[i] = {
         type = 'sprite',
         name = 'framework_indicator_' .. color,
-        filename = Mod.ROOT .. '/framework/graphics/indicators.png',
+        filename = Framework.ROOT .. '/framework/graphics/indicators.png',
         y = (i - 1) * 32,
         size = 32,
         flags = { 'icon' },
@@ -18,7 +18,7 @@ data:extend(indicators)
 
 ----------------------------------------------------------------------------------------------------
 
-local fab = Mod.ROOT .. '/framework/graphics/frame-action-icons.png'
+local fab = Framework.ROOT .. '/framework/graphics/frame-action-icons.png'
 
 data:extend {
     {
@@ -72,42 +72,42 @@ data:extend {
     {
         type = 'sprite',
         name = 'framework_nav_backward_black',
-        filename = Mod.ROOT .. '/framework/graphics/nav-backward-black.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-backward-black.png',
         size = 32,
         flags = { 'gui-icon' },
     },
     {
         type = 'sprite',
         name = 'framework_nav_backward_white',
-        filename = Mod.ROOT .. '/framework/graphics/nav-backward-white.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-backward-white.png',
         size = 32,
         flags = { 'gui-icon' },
     },
     {
         type = 'sprite',
         name = 'framework_nav_backward_disabled',
-        filename = Mod.ROOT .. '/framework/graphics/nav-backward-disabled.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-backward-disabled.png',
         size = 32,
         flags = { 'gui-icon' },
     },
     {
         type = 'sprite',
         name = 'framework_nav_forward_black',
-        filename = Mod.ROOT .. '/framework/graphics/nav-forward-black.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-forward-black.png',
         size = 32,
         flags = { 'gui-icon' },
     },
     {
         type = 'sprite',
         name = 'framework_nav_forward_white',
-        filename = Mod.ROOT .. '/framework/graphics/nav-forward-white.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-forward-white.png',
         size = 32,
         flags = { 'gui-icon' },
     },
     {
         type = 'sprite',
         name = 'framework_nav_forward_disabled',
-        filename = Mod.ROOT .. '/framework/graphics/nav-forward-disabled.png',
+        filename = Framework.ROOT .. '/framework/graphics/nav-forward-disabled.png',
         size = 32,
         flags = { 'gui-icon' },
     },

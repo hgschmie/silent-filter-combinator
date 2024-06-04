@@ -12,8 +12,8 @@ local This = {
     gui = nil,
 }
 
-Mod.settings:add_startup(require('scripts.settings-startup'))
-Mod.settings:add_player(require('scripts.settings-player'))
+Framework.settings:add_startup(require('scripts.settings-startup'))
+Framework.settings:add_player(require('scripts.settings-player'))
 
 if (script) then
     This.gui = require('scripts.gui') --[[@as ModGui ]]

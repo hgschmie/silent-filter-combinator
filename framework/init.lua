@@ -5,7 +5,7 @@ local Is = require('__stdlib__/stdlib/utils/is')
 --- Framework central access point
 -- The framework singleton, provides access to well known constants and the Framework components
 -- other components.
---- @class FrameworkMod
+--- @class FrameworkRoot
 --- @field PREFIX string
 --- @field NAME string
 --- @field STORAGE string
@@ -15,7 +15,7 @@ local Is = require('__stdlib__/stdlib/utils/is')
 --- @field logger FrameworkLogger?
 --- @field runtime FrameworkRuntime?
 --- @field gui_manager FrameworkGuiManager?
-Mod = {
+Framework = {
     --- The non-localised prefix (textual ID) of this mod.
     -- Must be set as the earliest possible time, as virtually all other framework parts use this.
     PREFIX = 'unknown-module-',
@@ -43,9 +43,9 @@ Mod = {
 }
 
 --- Initialize the core framework.
---- the code itself references the global Mod
----@param config FrameworkModConfig table<string, any>|function config provider
-function Mod:init(config)
+--- the code itself references the global Framework table.
+---@param config FrameworkConfig|function():FrameworkConfig config provider
+function Framework:init(config)
     assert(Is.Function(config) or Is.Table(config), 'configuration must either be a table or a function that provides a table')
     if Is.Function(config) then
         config = config()
@@ -80,9 +80,9 @@ end
 
 ---------------------------------------------------------------------------------------------------
 
-return Mod
+return Framework
 
---- @class FrameworkModConfig
+--- @class FrameworkConfig
 --- @field name string The human readable name for the module
 --- @field prefix string A prefix for all game registered elements
 --- @field root string The module root name

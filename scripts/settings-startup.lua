@@ -2,7 +2,7 @@
 --- Startup settings
 local StartupSettings = {
   -- Defaults
-  empty_slots = { Mod.PREFIX .. "empty-slots", 40 },
+  empty_slots = { Framework.PREFIX .. "empty-slots", 40 },
 }
 
 ----------------------------------------------------------------------------------------------------

@@ -15,9 +15,9 @@ local FiCo = {}
 
 ---@class FilterCombinatorConfig
 ---@field enabled boolean
----@field status integer?
+---@field status defines.entity_status?
 ---@field use_wire boolean
----@field filter_wire integer
+---@field filter_wire defines.wire_type
 ---@field include_mode boolean
 ---@field signals ConstantCombinatorParameters[]
 local default_config = {
@@ -81,7 +81,7 @@ function FiCo:setEntity(entity_id, fc_entity)
 
     if global.fc_data.count < 0 then
         global.fc_data.count = table_size(global.fc_data.fc)
-        Mod.logger:logf('Filter Combinator count got negative (bug), size is now: %d', global.fc_data.count)
+        Framework.logger:logf('Filter Combinator count got negative (bug), size is now: %d', global.fc_data.count)
     end
 end
 
@@ -107,7 +107,7 @@ local function create_internal_entity(cfg)
 
     -- ignored combinators are always invisible
     -- if no player index was passed, combinators are invisible
-    local comb_visible = (not ignore) and (player_index and Mod.settings:player(player_index).comb_visible)
+    local comb_visible = (not ignore) and (player_index and Framework.settings:player(player_index).comb_visible)
 
     -- invisible combinators share position with the main unit
     local x = (comb_visible and cfg.x or 0) or 0
@@ -511,6 +511,7 @@ function FiCo:create(main, player_index, tags)
 
     -- if tags were passed in and they contain a fc config, use that.
     local config = create_config(tags and tags['fc_config'] --[[@as FilterCombinatorConfig]])
+    config.status = main.status
 
     local fc_entity = {
         main = main,

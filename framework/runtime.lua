@@ -11,8 +11,8 @@ local Runtime = {}
 
 --- Framework storage, not intended for direct access from the mod
 function Runtime:storage()
-    if (not global[Mod.STORAGE]) then global[Mod.STORAGE] = {} end
-    return global[Mod.STORAGE]
+    if (not global[Framework.STORAGE]) then global[Framework.STORAGE] = {} end
+    return global[Framework.STORAGE]
 end
 
 local function get_id(self, name, initial_function)
@@ -20,11 +20,11 @@ local function get_id(self, name, initial_function)
     assert(self:storage(), 'no framework storage found!')
 
     if self:storage()[name] then
-        Mod.logger:debugf('Loaded %s from storage', name)
+        Framework.logger:debugf('Loaded %s from storage', name)
         self[name] = self:storage()[name]
     else
         self[name] = (initial_function and initial_function()) or 1
-        Mod.logger:debugf('Created %s (%d)', name, self[name])
+        Framework.logger:debugf('Created %s (%d)', name, self[name])
         self:storage()[name] = self[name]
     end
     return self[name]

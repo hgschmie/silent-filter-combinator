@@ -6,7 +6,7 @@ local data_util = require('framework.prototypes.data-util')
 
 local styles = data.raw['gui-style'].default
 
-local slot_tileset = Mod.ROOT .. '/framework/graphics/slots.png'
+local slot_tileset = Framework.ROOT .. '/framework/graphics/slots.png'
 
 local function gen_slot(x, y, default_offset)
     default_offset = default_offset or 0
@@ -265,7 +265,7 @@ styles.framework_subheader_horizontal_line = {
     bottom_margin = -2,
     border = {
         border_width = 8,
-        horizontal_line = { filename = Mod.ROOT .. '/framework/graphics/subheader-line.png', size = { 1, 8 } },
+        horizontal_line = { filename = Framework.ROOT .. '/framework/graphics/subheader-line.png', size = { 1, 8 } },
     },
 }
 
