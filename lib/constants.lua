@@ -8,6 +8,9 @@ local Constants = {}
 -- main constants
 --------------------------------------------------------------------------------
 
+-- the current version that is the result of the latest migration
+Constants.current_version = 7
+
 Constants.prefix = 'hps:fc-'
 Constants.name = 'filter-combinator'
 Constants.root = '__filter-combinator-improved__'

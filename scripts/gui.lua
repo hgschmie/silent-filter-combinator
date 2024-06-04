@@ -146,11 +146,22 @@ local function get_ui(fc_entity)
                     {
                         type = 'switch',
                         name = 'incl-excl',
-                        right_label_caption = { const:locale('mode-exclusive') },
-                        right_label_tooltip = { const:locale('mode-exclusive-tooltip') },
-                        left_label_caption = { const:locale('mode-inclusive') },
-                        left_label_tooltip = { const:locale('mode-inclusive-tooltip') },
+                        right_label_caption = { const:locale('mode-exclude') },
+                        right_label_tooltip = { const:locale('mode-exclude-tooltip') },
+                        left_label_caption = { const:locale('mode-include') },
+                        left_label_tooltip = { const:locale('mode-include-tooltip') },
                         handler = { [defines.events.on_gui_switch_state_changed] = onSwitchExclusive },
+                    },
+                    { -- Add some spacing
+                        type = 'frame',
+                        style = 'container_invisible_frame_with_title',
+                    },
+                    {
+                        type = 'checkbox',
+                        caption = { const:locale('mode-wire') },
+                        name = 'mode-wire',
+                        handler = { [defines.events.on_gui_checked_state_changed] = onToggleWireMode },
+                        state = false,
                     },
                     { -- Add some spacing
                         type = 'frame',
@@ -159,25 +170,19 @@ local function get_ui(fc_entity)
                     {
                         type = 'flow',
                         direction = 'horizontal',
+                        name = 'wire-select',
                         children = {
-                            {
-                                type = 'checkbox',
-                                caption = { const:locale('mode-wire') },
-                                name = 'mode-wire',
-                                handler = { [defines.events.on_gui_checked_state_changed] = onToggleWireMode },
-                                state = false,
-                            },
                             {
                                 type = 'radiobutton',
                                 caption = { 'item-name.red-wire' },
-                                name = 'red_wire_indicator',
+                                name = 'red-wire-indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchRedWire },
                                 state = false,
                             },
                             {
                                 type = 'radiobutton',
                                 caption = { 'item-name.green-wire' },
-                                name = 'green_wire_indicator',
+                                name = 'green-wire-indicator',
                                 handler = { [defines.events.on_gui_checked_state_changed] = onSwitchGreenWire },
                                 state = false,
                             },
@@ -186,7 +191,7 @@ local function get_ui(fc_entity)
                     {
                         type = 'flow',
                         direction = 'vertical',
-                        name = 'item_grid',
+                        name = 'item-grid',
                         children = {
                             { -- Add some spacing
                                 type = 'frame',
@@ -423,13 +428,17 @@ update_gui_state = function(gui, fc_entity)
 
     local mode_wire = gui:find_element('mode-wire')
     mode_wire.state = fc_config.use_wire
-    local item_grid = gui:find_element('item_grid')
+
+    local wire_select = gui:find_element('wire-select')
+    wire_select.visible = fc_config.use_wire
+
+    local item_grid = gui:find_element('item-grid')
     item_grid.visible = not fc_config.use_wire
 
-    local red_wire = gui:find_element('red_wire_indicator')
+    local red_wire = gui:find_element('red-wire-indicator')
     red_wire.state = fc_config.filter_wire == defines.wire_type.red
 
-    local green_wire = gui:find_element('green_wire_indicator')
+    local green_wire = gui:find_element('green-wire-indicator')
     green_wire.state = fc_config.filter_wire == defines.wire_type.green
 
     local slot_buttons = make_grid_buttons(fc_entity)

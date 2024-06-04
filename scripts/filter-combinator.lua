@@ -43,6 +43,21 @@ local function create_config(parent_config)
 end
 
 ------------------------------------------------------------------------
+-- init setup 
+------------------------------------------------------------------------
+
+--- Setup the global fico data structure.
+function FiCo:init()
+    if global.fc_data then return end
+
+    global.fc_data = {
+        fc = {},
+        count = 0,
+        VERSION = const.current_version,
+    }
+end
+
+------------------------------------------------------------------------
 -- attribute getters/setters
 ------------------------------------------------------------------------
 

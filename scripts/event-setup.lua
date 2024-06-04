@@ -259,6 +259,9 @@ local match_main_entities = Util.create_event_entity_matcher('name', const.main_
 local match_internal_entities = Util.create_event_entity_matcher('name', const.internal_entity_names)
 local match_ghost_entities = Util.create_event_ghost_entity_matcher(const.main_entity_names)
 
+-- mod init code
+Event.on_init(function() This.fico:init() end)
+
 -- manage ghost building (robot building)
 Util.event_register(const.creation_events, onGhostEntityCreated, match_ghost_entities)
 
