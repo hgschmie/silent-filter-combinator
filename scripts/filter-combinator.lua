@@ -142,96 +142,49 @@ local function create_internal_entity(cfg)
 end
 
 ------------------------------------------------------------------------
--- "all signals" constant combinator management
+-- "all signals" management
 ------------------------------------------------------------------------
 
---- Adds a set of signals to the given constant combinator behavior.
---- @param behavior LuaConstantCombinatorControlBehavior
---- @param count integer Number of slots remaining
---- @param prototypes table<string, LuaItemPrototype|LuaFluidPrototype|LuaVirtualSignalPrototype>
---- @param type string name of the type
---- @return boolean success
---- @return integer next_index
-local function add_signals(behavior, count, type, prototypes)
-    local max = behavior.signals_count
-    for sig_name, prototype in pairs(prototypes) do
-        if count <= max then
-            if not (type == 'virtual' and prototype.special) then
-                behavior.set_signal(count, { signal = { type = type, name = sig_name }, count = 1 })
-                count = count + 1
-            end
-        else
-            return false, max
-        end
-    end
-
-    return true, count
-end
-
 --- Adds all item, fluid and virtual signals to a combinator.
---- @param behavior LuaConstantCombinatorControlBehavior
-local function add_all_signals(behavior)
+--- @return ConstantCombinatorParameters[] all_signals
+local function create_all_signals()
     local prototypes = {
         item = game.item_prototypes,
         fluid = game.fluid_prototypes,
         virtual = game.virtual_signal_prototypes,
     }
+
     local idx = 1
 
+    ---@type ConstantCombinatorParameters[]
+    local signals = {}
+
     for type, prototype in pairs(prototypes) do
-        local success, new_idx = add_signals(behavior, idx, type, prototype)
-        if not success then
-            Mod.logger:logf('Truncating signal list, too many signals found!')
-            break
-        else
-            idx = new_idx
-        end
-    end
-end
-
----@param fc_entity FilterCombinatorData
----@return LuaEntity all_signals
----@return integer all_signals_count
-function FiCo:getAllSignalsConstantCombinator(fc_entity)
-    if not Is.Valid(self.all_signals) then
-        if (self.all_signals) then
-            self.all_signals.destroy()
-            self.all_signals = nil
-            self.all_signals_count = nil
-        end
-
-        if Is.Valid(global.all_signals) then
-            self.all_signals = global.all_signals
-            self.all_signals_count = global.all_signals_count
-        else
-            if (global.all_signals) then
-                global.all_signals.destroy()
-                global.all_signals = nil
-                global.all_signals_count = nil
+        for sig_name, p in pairs(prototype) do
+            if not (type == 'virtual' and p.special) then
+                table.insert(signals, { signal = { type = type, name = sig_name }, count = 1, index = idx })
+                idx = idx + 1
             end
-
-            global.all_signals = create_internal_entity { entity = fc_entity, type = 'cc', ignore = true }
-            local all_signals_behavior = global.all_signals.get_or_create_control_behavior() --[[@as LuaConstantCombinatorControlBehavior ]]
-            global.all_signals_count = all_signals_behavior.signals_count
-            add_all_signals(all_signals_behavior)
-
-            self.all_signals = global.all_signals
-            self.all_signals_count = global.all_signals_count
         end
     end
 
-    return self.all_signals, self.all_signals_count
+    return signals
 end
 
-function FiCo:clearAllSignalsConstantCombinator()
-    if self.all_signals then
-        self.all_signals.destroy()
-        self.all_signals = nil
+---@return ConstantCombinatorParameters[] all_signals
+function FiCo:getAllSignals()
+    if not self.all_signals then
+        if not global.all_signals then
+            global.all_signals = create_all_signals()
+        end
+        self.all_signals = global.all_signals
     end
-    if global.all_signals then
-        global.all_signals.destroy()
-        global_all_signals = nil
-    end
+    return self.all_signals
+end
+
+function FiCo:clearAllSignals()
+    self.all_signals = nil
+    global.all_signals = nil
 end
 
 ------------------------------------------------------------------------
@@ -576,8 +529,7 @@ function FiCo:create(main, player_index, tags)
         }
     end
 
-    local all_signals = self:getAllSignalsConstantCombinator(fc_entity)
-    fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
+    fc_entity.ref.ex.get_or_create_control_behavior().parameters = self:getAllSignals()
 
     -- setup all the sub-entities
     for _, behavior in pairs(initial_behavior) do

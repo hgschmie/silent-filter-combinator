@@ -368,9 +368,8 @@ end
 ---@return FrameworkGuiElemDef[] gui_elements
 local function make_grid_buttons(fc_entity)
     local signals = fc_entity.config.signals
-    local _, all_signals_count = This.fico:getAllSignalsConstantCombinator(fc_entity)
+    local all_signals_count = #(This.fico:getAllSignals())
     local list = {}
-    local empty_slot_count = 0
 
     -- round to next 10 signals to make nice lines.
     local row_count = math.floor(all_signals_count / 10)

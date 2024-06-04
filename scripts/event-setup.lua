@@ -224,11 +224,12 @@ end
 --- @param changed ConfigurationChangedData?
 local function onConfigurationChanged(changed)
     if This and This.fico then
-        This.fico:clearAllSignalsConstantCombinator()
+        This.fico:clearAllSignals()
+
+        local all_signals = This.fico:getAllSignals()
 
         for _, fc_entity in pairs(This.fico:entities()) do
-            local all_signals = This.fico:getAllSignalsConstantCombinator(fc_entity)
-            fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals.get_or_create_control_behavior().parameters
+            fc_entity.ref.ex.get_or_create_control_behavior().parameters = all_signals
         end
     end
 end
